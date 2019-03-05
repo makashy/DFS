@@ -37,9 +37,9 @@ def xception_block(inputs,
                                      use_bias=False
                                      )(inputs)
 
-            outputs = residual + shortcut
+            outputs = layers.Add()([residual, shortcut])
         elif skip_connection_type == 'sum':
-            outputs = residual + inputs
+            outputs = layers.Add()([residual, inputs])
         elif skip_connection_type == 'none':
             outputs = residual
         else:
@@ -86,6 +86,7 @@ def xception_71(inputs):
                             dilation_rate_list=[1, 1, 1],
                             skip_connection_type='conv',
                             name='entry_flow/block3')
+    skip = result
 
     result = xception_block(inputs=result,
                             depth_list=[728, 728, 728],
@@ -123,5 +124,5 @@ def xception_71(inputs):
                             skip_connection_type='conv',
                             name='exit_flow/block2')
 
-    return result
+    return result, skip
     
