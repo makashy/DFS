@@ -21,7 +21,10 @@ class NYU:
         self.index = len(self.file.root.images) - 1
         self.batch_size = batch_size
         self.repeater = repeater
-        self.label_type = label_type.decode()
+        if isinstance(label_type, str):
+            self.label_type = label_type
+        else:
+            self.label_type = label_type.decode()
 
     def __iter__(self):
         return self
