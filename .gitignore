@@ -112,3 +112,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+deeplabV3_original_graph/events.out.tfevents.1552052308.DESKTOP-16JB7AJ
+log/1/events.out.tfevents.1552422723.DESKTOP-16JB7AJ
