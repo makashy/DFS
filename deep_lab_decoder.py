@@ -1,34 +1,72 @@
 """DeepLab v.3+ decoder"""
 
 import tensorflow as tf
-import numpy as np
-layers = tf.keras.layers
+
+LAYERS = tf.keras.layers
+L2 = tf.keras.regularizers.l2
+
+
+def sep_conv_bn_relu(inputs,
+                     filters=256,
+                     kernel_size=3,
+                     strides=1,
+                     dilation_rate=1,
+                     name="sepconv_bn"):
+    """An separable convolution with batch_normalization and relu
+    activation after depthwise and pointwise convolutions"""
+
+    with tf.name_scope(name):
+
+        result = LAYERS.DepthwiseConv2D(
+            kernel_size=kernel_size,
+            strides=strides,
+            padding='same',
+            depth_multiplier=1,
+            use_bias=False,
+            depthwise_regularizer=L2(1e-5),
+            dilation_rate=dilation_rate)(inputs)
+        result = LAYERS.BatchNormalization()(result)
+        result = LAYERS.Activation('relu')(result)
+        result = LAYERS.Conv2D(
+            filters=filters,
+            kernel_size=1,
+            use_bias=False,
+            kernel_regularizer=L2(1e-5))(result)
+        result = LAYERS.BatchNormalization()(result)
+        result = LAYERS.Activation('relu')(result)
+
+    return result
+
 
 def decoder(inputs, skip):
     """Implementation of DeepLab v.3+ decoder"""
 
-    skip = layers.Conv2D(filters=48,
-                         kernel_size=1,
-                         padding='same',
-                         use_bias=False,
-                         name='feature_projection0')(skip)
+    with tf.name_scope('decoder'):
 
-    skip = layers.BatchNormalization(name='feature_projection0_BN', epsilon=1e-5)(skip)
+        skip = LAYERS.Conv2D(
+            filters=48,
+            kernel_size=1,
+            padding='same',
+            use_bias=False,
+            kernel_regularizer=L2(1e-5),
+            name='feature_projection/Conv2D')(skip)
+        skip = LAYERS.BatchNormalization(
+            name='feature_projection/BN', epsilon=1e-5)(skip)
+        skip = LAYERS.Activation('relu', name='feature_projection/relu')(skip)
 
-    skip = layers.Activation('relu')(skip)
+        result = LAYERS.UpSampling2D(size=(4, 4))(inputs)
 
-    result = layers.UpSampling2D(size=(int(np.ceil(4)),
-                                              int(np.ceil(4))))(inputs)
+        result = LAYERS.Concatenate()([result, skip])
 
-    result = layers.Concatenate()([result, skip])
+        result = sep_conv_bn_relu(
+            inputs=result, filters=256, kernel_size=3, strides=1)
+        result = sep_conv_bn_relu(
+            inputs=result, filters=256, kernel_size=3, strides=1)
 
-    result = layers.Conv2D(filters=256, kernel_size=3, strides=1, padding='same')(result)
-    result = layers.Conv2D(filters=256, kernel_size=3, strides=1, padding='same')(result)
+        result = LAYERS.Conv2D(
+            filters=21, kernel_size=1, padding='same',
+            name='logits_semantic')(result)
 
-    result = layers.Conv2D(filters=21,#TODO : was 21
-                           kernel_size=1,
-                           padding='same',
-                           name='logits_semantic')(result)
-    result = layers.UpSampling2D(size=(8, 8))(result)
+        result = LAYERS.UpSampling2D(size=(8, 8))(result)
 
-    return result
+        return result

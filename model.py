@@ -11,7 +11,7 @@ def deep_lab_v3(inputs):
     """Implementation of the Deeplabv3+ """
 
     result, skip = xception.xception_71(inputs=inputs)
-    result = aspp.aspp(inputs=result)
+    result = aspp.aspp(inputs=result, input_shape=[480, 640, 3])
     result = deep_lab_decoder.decoder(inputs=result, skip=skip)
     model = MODEL(inputs=inputs, outputs=result, name='Deeplabv3+')
     return model
