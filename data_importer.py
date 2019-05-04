@@ -76,12 +76,11 @@ class DatasetGenerator:
         # to 64-bit floating point(->preserve_range=False).
         # 3) [:, :, :3] -> to remove 4th channel in png
         features = np.array([
-            resize(
-                image=imread(self.dataset.loc[:, 'image'].iat[i])[:, :, :3],
-                output_shape=output_shape,
-                mode='constant',
-                preserve_range=False,
-                anti_aliasing=True)
+            resize(image=imread(self.dataset.loc[:, 'image'].iat[i])[:, :, :3],
+                   output_shape=output_shape,
+                   mode='constant',
+                   preserve_range=False,
+                   anti_aliasing=True)
             for i in range(self.index, self.index + self.batch_size)
         ])
 
@@ -93,9 +92,8 @@ class DatasetGenerator:
             # 1) Resize segmentation to match a certain size.
             # 2) [:, :, :3] -> to remove 4th channel in png
             segmentation = np.array([
-                imread(
-                    self.dataset.loc[:, 'segmentation'].iat[i])[:, :, :3]
-                    for i in range(self.index, self.index + self.batch_size)
+                imread(self.dataset.loc[:, 'segmentation'].iat[i])[:, :, :3]
+                for i in range(self.index, self.index + self.batch_size)
             ])
 
             # resize(image=,
@@ -110,11 +108,11 @@ class DatasetGenerator:
             # for i in range(self.batch_size):
             #     for j in range(output_shape[0]):
             #         for k in range(output_shape[1]):
-            #             new_segmentation[i, j, k, 
-            #             self.seg_dic[ 
+            #             new_segmentation[i, j, k,
+            #             self.seg_dic[
             #                 tuple(segmentation[i, j, k]) ][0]] = 1
             # segmentation = new_segmentation
-            
+
             if self.data_type is 'float32':
                 segmentation = img_as_float32(segmentation)
             else:
@@ -190,27 +188,27 @@ class NYU:
                 self.index = len(self.file.root.images) - 1
         self.index = self.index - self.batch_size
 
-        features = np.array(
-            self.file.root.images[self.index:self.index + self.batch_size])
+        features = np.array(self.file.root.images[self.index:self.index +
+                                                  self.batch_size])
         features = np.transpose(features, [0, 3, 2, 1])
         features = np.array(features / 255., dtype=np.float16)
 
         if self.label_type == 'depth':
             label_set = self.file.root.depths
-            labels = np.array(
-                label_set[self.index:self.index + self.batch_size])
+            labels = np.array(label_set[self.index:self.index +
+                                        self.batch_size])
             labels = np.transpose(labels, [0, 2, 1])
             labels = np.reshape(
                 labels, (labels.shape[0], labels.shape[1], labels.shape[2], 1))
         elif self.label_type == 'segmentation':
             label_set = self.file.root.labels
-            labels = np.array(
-                label_set[self.index:self.index + self.batch_size])
+            labels = np.array(label_set[self.index:self.index +
+                                        self.batch_size])
             labels = np.transpose(labels, [0, 2, 1])
             labels = np.reshape(
                 labels, (labels.shape[0], labels.shape[1], labels.shape[2], 1))
-            new_segmentation = np.ndarray(
-                shape=(self.batch_size, 480, 640, 21))
+            new_segmentation = np.ndarray(shape=(self.batch_size, 480, 640,
+                                                 21))
 
             for i in range(self.batch_size):
                 for j in range(480):
@@ -309,38 +307,35 @@ class SynthiaSf:
                 self.index = self.dataset.shape[0] - 1
         self.index = self.index - self.batch_size
 
-        features = np.array(
-            np.array([
-                resize(
-                    image=imread(self.dataset.iloc[i, 0])[:, :, :3],
-                    output_shape=(480, 640))
-                for i in range(self.index, self.index + self.batch_size)
-            ]))
+        features = np.array([
+            resize(image=imread(self.dataset.iloc[i, 0])[:, :, :3],
+                   output_shape=(480, 640))
+            for i in range(self.index, self.index + self.batch_size)
+        ])
         # features = np.array(features / 255., dtype=np.float32)
 
         if self.label_type == 'depth':
-            labels = np.array(
-                np.array([
-                    resize(
-                        image=imread(self.dataset.iloc[i, 1]),
-                        output_shape=(480, 640))
-                    for i in range(self.index, self.index + self.batch_size)
-                ]),
-                dtype=np.int32)
+            labels = np.array([
+                resize(image=imread(self.dataset.iloc[i, 1]),
+                       output_shape=(480, 640))
+                for i in range(self.index, self.index + self.batch_size)
+            ],
+                              dtype=np.int32)
+
             labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
                       labels[:, :, :, 2] * 256 * 256) / ((256 * 256 * 256) - 1)
 
         elif self.label_type == 'segmentation':
             labels = np.array([
-                    resize(
-                        image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-                        output_shape=(480, 640))
-                    for i in range(self.index, self.index + self.batch_size)
-                ])
+                resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
+                       output_shape=(480, 640))
+                for i in range(self.index, self.index + self.batch_size)
+            ])
             labels = img_as_ubyte(labels)
 
-            new_segmentation = np.ndarray(
-                shape=(self.batch_size, 480, 640, 22))
+            new_segmentation = np.ndarray(shape=(self.batch_size, 480, 640,
+                                                 22))
+
             for i in range(self.batch_size):
                 for j in range(480):
                     for k in range(640):
@@ -350,23 +345,11 @@ class SynthiaSf:
 
         elif self.label_type == 'sparse_segmentation':
             labels = np.array([
-                    resize(
-                        image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-                        output_shape=(480, 640, 1))
-                    for i in range(self.index, self.index + self.batch_size)
-                ])
+                resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
+                       output_shape=(480, 640, 1))
+                for i in range(self.index, self.index + self.batch_size)
+            ])
             labels = img_as_ubyte(labels)
-
-            # new_segmentation = np.ndarray(
-            #     shape=(self.batch_size, 480, 640, 22))
-            # for i in range(self.batch_size):
-            #     for j in range(480):
-            #         for k in range(640):
-            #             if labels[i, j, k] < 22:
-            #                 new_segmentation[i, j, k, int(labels[i, j, k])] = 1
-            # labels = new_segmentation
-            # labels = np.array(labels, dtype=np.float32)
-            # labels = img_as_ubyte(labels)
         else:
             raise ValueError('invalid label type')
 
