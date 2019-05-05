@@ -12,6 +12,7 @@ from skimage import img_as_float64
 from skimage.io import imread
 from skimage.transform import resize
 from skimage import img_as_ubyte
+from skimage import img_as_uint
 
 import segmentation_dics
 
@@ -246,6 +247,7 @@ class SynthiaSf:
         self.shuffle = shuffle
         self.dataset = self.data_frame_creator()
         self.index = self.dataset.shape[0] - 1
+        self.max_distance = 1000
 
     def data_frame_creator(self):
         """ pandas dataFrame for addresses of rgb, depth and segmentation"""
@@ -319,11 +321,11 @@ class SynthiaSf:
                 resize(image=imread(self.dataset.iloc[i, 1]),
                        output_shape=(480, 640))
                 for i in range(self.index, self.index + self.batch_size)
-            ],
-                              dtype=np.int32)
-
+            ])
+            labels = img_as_ubyte(labels)
+            labels = np.array(labels, dtype=np.float)
             labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
-                      labels[:, :, :, 2] * 256 * 256) / ((256 * 256 * 256) - 1)
+                      labels[:, :, :, 2] * 256 * 256) / ((256 * 256 * 256) - 1) * self.max_distance
 
         elif self.label_type == 'segmentation':
             labels = np.array([
