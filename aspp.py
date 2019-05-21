@@ -12,6 +12,8 @@ def sep_conv_bn_relu(inputs,
                      kernel_size=3,
                      strides=1,
                      dilation_rate=1,
+                     weight_decay=1e-5,
+                     batch_normalization=False,
                      name="sepconv_bn"):
     """An separable convolution with batch_normalization and relu
     activation after depthwise and pointwise convolutions"""
@@ -24,22 +26,24 @@ def sep_conv_bn_relu(inputs,
             padding='same',
             depth_multiplier=1,
             use_bias=False,
-            depthwise_regularizer=L2(1e-5),
+            depthwise_regularizer=L2(weight_decay),
             dilation_rate=dilation_rate)(inputs)
-        result = LAYERS.BatchNormalization()(result)
+        if batch_normalization:
+            result = LAYERS.BatchNormalization()(result)
         result = LAYERS.Activation('relu')(result)
         result = LAYERS.Conv2D(
             filters=filters,
             kernel_size=1,
             use_bias=False,
-            kernel_regularizer=L2(1e-5))(result)
-        result = LAYERS.BatchNormalization()(result)
+            kernel_regularizer=L2(weight_decay))(result)
+        if batch_normalization:
+            result = LAYERS.BatchNormalization()(result)
         result = LAYERS.Activation('relu')(result)
 
     return result
 
 
-def aspp(inputs, input_shape):
+def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
     """the DeepLabv3 ASPP module"""
     output_stride = 16
 
@@ -49,8 +53,10 @@ def aspp(inputs, input_shape):
         kernel_size=1,
         padding='same',
         use_bias=False,
+        kernel_regularizer=L2(weight_decay),
         name='aspp0')(inputs)
-    b_0 = LAYERS.BatchNormalization(name='aspp0_BN', epsilon=1e-5)(b_0)
+    if batch_normalization:
+        b_0 = LAYERS.BatchNormalization(name='aspp0_BN', epsilon=1e-5)(b_0)
     b_0 = LAYERS.Activation('relu', name='aspp0_activation')(b_0)
 
     # Employ 3x3 convolutions with atrous rate = 6
@@ -60,6 +66,8 @@ def aspp(inputs, input_shape):
         kernel_size=3,
         strides=1,
         dilation_rate=6,
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='aspp_block_r6')
 
     # Employ 3x3 convolutions with atrous rate = 12
@@ -69,6 +77,8 @@ def aspp(inputs, input_shape):
         kernel_size=3,
         strides=1,
         dilation_rate=12,
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='aspp_block_r12')
 
     # Employ 3x3 convolutions with atrous rate = 18
@@ -78,6 +88,8 @@ def aspp(inputs, input_shape):
         kernel_size=3,
         strides=1,
         dilation_rate=18,
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='aspp_block_r18')
 
     # Image Feature branch  # TODO: check again!
@@ -91,17 +103,25 @@ def aspp(inputs, input_shape):
         kernel_size=1,
         padding='same',
         use_bias=False,
+        kernel_regularizer=L2(weight_decay),
         name='image_pooling')(inputs)
-    b_4 = LAYERS.BatchNormalization(name='image_pooling_BN', epsilon=1e-5)(b_4)
+    if batch_normalization:
+        b_4 = LAYERS.BatchNormalization(
+            name='image_pooling_BN', epsilon=1e-5)(b_4)
     b_4 = LAYERS.Activation('relu')(b_4)
-    # b_4 = LAYERS.UpSampling2D((pool_height, pool_width))(b_4)
+    # b_4 = LAYERS.UpSampling2D((pool_height, pool_width))(b_4) TODO: Why?
 
     # concatenate ASPP branches & project
     result = LAYERS.Concatenate()([b_4, b_0, b_1, b_2, b_3])
 
     result = LAYERS.Conv2D(
-        filters=256, kernel_size=1, name='concat_projection')(result)
-
+        filters=256,
+        kernel_size=1,
+        name='concat_projection',
+        kernel_regularizer=L2(weight_decay))(result)
+    if batch_normalization:
+        result = LAYERS.BatchNormalization(
+            name='final_pooling_BN', epsilon=1e-5)(result)#TODO : additional
     result = LAYERS.Dropout(rate=0.9, name='concat_projection_dropout')(result)
 
     return result
