@@ -18,6 +18,8 @@ def xception_block(inputs,
                    strides_list,
                    dilation_rate_list,
                    skip_connection_type='none',
+                   weight_decay=1e-5,
+                   batch_normalization=False,
                    name="xception_block"):
     """An Xception module."""
 
@@ -33,18 +35,20 @@ def xception_block(inputs,
                 padding='same',
                 depth_multiplier=1,
                 use_bias=False,
-                depthwise_regularizer=L2(1e-5),
+                depthwise_regularizer=L2(weight_decay),
                 dilation_rate=dilation_rate_list[i])(residual)
 
-            residual = LAYERS.BatchNormalization()(residual)
+            if batch_normalization:
+                residual = LAYERS.BatchNormalization()(residual)
 
             residual = LAYERS.Conv2D(
                 filters=depth_list[i],
                 kernel_size=1,
                 use_bias=False,
-                kernel_regularizer=L2(1e-5))(residual)
+                kernel_regularizer=L2(weight_decay))(residual)
 
-            residual = LAYERS.BatchNormalization()(residual)
+            if batch_normalization:
+                residual = LAYERS.BatchNormalization()(residual)
 
         if skip_connection_type == 'conv':
 
@@ -55,9 +59,10 @@ def xception_block(inputs,
                 padding='same',
                 dilation_rate=dilation_rate_list[-1],
                 use_bias=False,# TODO: False?
-                kernel_regularizer=L2(1e-5))(inputs)
+                kernel_regularizer=L2(weight_decay))(inputs)
 
-            shortcut = LAYERS.BatchNormalization()(shortcut)
+            if batch_normalization:
+                shortcut = LAYERS.BatchNormalization()(shortcut)
             outputs = LAYERS.Add()([residual, shortcut])
 
         elif skip_connection_type == 'sum':
@@ -70,19 +75,21 @@ def xception_block(inputs,
     return outputs
 
 
-def xception_71(inputs):
+def xception_71(inputs, weight_decay=1e-5, batch_normalization=False):
     """Xception-71 model."""
 
     result = LAYERS.Conv2D(
-        filters=32, kernel_size=3, strides=2, use_bias=False,
+        filters=32, kernel_size=3, strides=2, use_bias=False, kernel_regularizer=L2(weight_decay),
         padding='same')(inputs)
-    result = LAYERS.BatchNormalization()(result)
+    if batch_normalization:
+        result = LAYERS.BatchNormalization()(result)
     result = LAYERS.ReLU()(result)
 
     result = LAYERS.Conv2D(
-        filters=64, kernel_size=3, strides=1, use_bias=False,
+        filters=64, kernel_size=3, strides=1, use_bias=False, kernel_regularizer=L2(weight_decay),
         padding='same')(result)
-    result = LAYERS.BatchNormalization()(result)
+    if batch_normalization:
+        result = LAYERS.BatchNormalization()(result)
     result = LAYERS.ReLU()(result)
 
     result = xception_block(
@@ -91,6 +98,8 @@ def xception_71(inputs):
         strides_list=[1, 1, 2],
         dilation_rate_list=[1, 1, 1],
         skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='entry_flow/block1')
 
     result = xception_block(
@@ -99,6 +108,8 @@ def xception_71(inputs):
         strides_list=[1, 1, 1],
         dilation_rate_list=[1, 1, 1],
         skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='entry_flow/block2')
 
     result = xception_block(
@@ -107,6 +118,8 @@ def xception_71(inputs):
         strides_list=[1, 1, 2],
         dilation_rate_list=[1, 1, 1],
         skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='entry_flow/block3')
     skip = result
 
@@ -116,6 +129,8 @@ def xception_71(inputs):
         strides_list=[1, 1, 1],
         dilation_rate_list=[1, 1, 1],
         skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='entry_flow/block4')
 
     result = xception_block(
@@ -124,15 +139,19 @@ def xception_71(inputs):
         strides_list=[1, 1, 2],
         dilation_rate_list=[1, 1, 1],
         skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='entry_flow/block5')
 
-    for i in range(16):
+    for i in range(1):
         result = xception_block(
             inputs=result,
             depth_list=[728, 728, 728],
             strides_list=[1, 1, 1],
             dilation_rate_list=[1, 1, 1],
             skip_connection_type='sum',
+            weight_decay=weight_decay,
+            batch_normalization=batch_normalization,
             name='middle_flow/block' + str(i + 1))
 
     result = xception_block(
@@ -141,6 +160,8 @@ def xception_71(inputs):
         strides_list=[1, 1, 2],
         dilation_rate_list=[1, 1, 1],
         skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='exit_flow/block1')
 
     result = xception_block(# TODO: additional ReLU?
@@ -149,6 +170,8 @@ def xception_71(inputs):
         strides_list=[1, 1, 1],
         dilation_rate_list=[1, 1, 1],
         skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
         name='exit_flow/block2')
 
     return result, skip
