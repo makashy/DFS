@@ -48,19 +48,19 @@ def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
     output_stride = 32
 
     # Employ a 1x1 convolution.
-    b_0 = LAYERS.Conv2D(
+    aspp_1x1 = LAYERS.Conv2D(
         filters=256,
         kernel_size=1,
         padding='same',
         use_bias=False,
         kernel_regularizer=L2(weight_decay),
-        name='aspp0')(inputs)
+        name='aspp/1x1/con2d')(inputs)
     if batch_normalization:
-        b_0 = LAYERS.BatchNormalization(name='aspp0_BN', epsilon=1e-5)(b_0)
-    b_0 = LAYERS.Activation('relu', name='aspp0_activation')(b_0)
+        aspp_1x1 = LAYERS.BatchNormalization(name='aspp/1x1/bn', epsilon=1e-5)(aspp_1x1)
+    aspp_1x1 = LAYERS.Activation('relu', name='aspp/1x1/relu')(aspp_1x1)
 
     # Employ 3x3 convolutions with atrous rate = 6
-    b_1 = sep_conv_bn_relu(
+    aspp_3x3_r6 = sep_conv_bn_relu(
         inputs=inputs,
         filters=256,
         kernel_size=3,
@@ -68,10 +68,10 @@ def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
         dilation_rate=6,
         weight_decay=weight_decay,
         batch_normalization=batch_normalization,
-        name='aspp_block_r6')
+        name='aspp/3x3_r6')
 
     # Employ 3x3 convolutions with atrous rate = 12
-    b_2 = sep_conv_bn_relu(
+    aspp_3x3_r12 = sep_conv_bn_relu(
         inputs=inputs,
         filters=256,
         kernel_size=3,
@@ -79,10 +79,10 @@ def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
         dilation_rate=12,
         weight_decay=weight_decay,
         batch_normalization=batch_normalization,
-        name='aspp_block_r12')
+        name='aspp/3x3_r12')
 
     # Employ 3x3 convolutions with atrous rate = 18
-    b_3 = sep_conv_bn_relu(
+    aspp_3x3_r18 = sep_conv_bn_relu(
         inputs=inputs,
         filters=256,
         kernel_size=3,
@@ -90,38 +90,36 @@ def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
         dilation_rate=18,
         weight_decay=weight_decay,
         batch_normalization=batch_normalization,
-        name='aspp_block_r18')
+        name='aspp/3x3_r18')
 
-    # Image Feature branch  # TODO: check again!
+    # Image Feature branch
     pool_height = int(np.ceil(input_shape[0] / output_stride))
     pool_width = int(np.ceil(input_shape[1] / output_stride))
-    b_4 = LAYERS.AveragePooling2D(
-        pool_size=(pool_height, pool_width), strides=[1, 1],
-        padding='same')(inputs)
-    b_4 = LAYERS.Conv2D(
+    aspp_image_features = LAYERS.AveragePooling2D(
+        pool_size=[pool_height, pool_width], 
+        name='aspp/image_features/average_pooling')(inputs)
+    aspp_image_features = LAYERS.Conv2D(
         filters=256,
         kernel_size=1,
         padding='same',
         use_bias=False,
         kernel_regularizer=L2(weight_decay),
-        name='image_pooling')(inputs)
+        name='aspp/image_features/conv2d')(aspp_image_features)
     if batch_normalization:
-        b_4 = LAYERS.BatchNormalization(
-            name='image_pooling_BN', epsilon=1e-5)(b_4)
-    b_4 = LAYERS.Activation('relu')(b_4)
-    # b_4 = LAYERS.UpSampling2D((pool_height, pool_width))(b_4) TODO: Why?
+        aspp_image_features = LAYERS.BatchNormalization(
+            name='aspp/image_features/image_pooling_BN', epsilon=1e-5)(aspp_image_features)
+    aspp_image_features = LAYERS.Activation('relu', name='aspp/image_features/relu')(aspp_image_features)
+    aspp_image_features = LAYERS.UpSampling2D((pool_height, pool_width), name='aspp/image_features/up_sampling')(aspp_image_features)
 
     # concatenate ASPP branches & project
-    result = LAYERS.Concatenate()([b_4, b_0, b_1, b_2, b_3])
+    result = LAYERS.Concatenate(name='aspp/concat')([aspp_1x1, aspp_3x3_r6, aspp_3x3_r12, aspp_3x3_r18, aspp_image_features])
 
     result = LAYERS.Conv2D(
         filters=256,
         kernel_size=1,
-        name='concat_projection',
+        name='aspp/conv_1x1',
         kernel_regularizer=L2(weight_decay))(result)
-    if batch_normalization:
-        result = LAYERS.BatchNormalization(
-            name='final_pooling_BN', epsilon=1e-5)(result)#TODO : additional
-    result = LAYERS.Dropout(rate=0.9, name='concat_projection_dropout')(result)
+
+    result = LAYERS.Dropout(rate=0.9, name='aspp/dropout')(result)
 
     return result
