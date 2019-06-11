@@ -75,6 +75,87 @@ def xception_block(inputs,
     return outputs
 
 
+def xception_41(inputs, weight_decay=1e-5, batch_normalization=False):
+    """Xception-41 model."""
+
+    result = LAYERS.Conv2D(
+        filters=32, kernel_size=3, strides=2, use_bias=False, kernel_regularizer=L2(weight_decay),
+        padding='same')(inputs)
+    if batch_normalization:
+        result = LAYERS.BatchNormalization()(result)
+    result = LAYERS.ReLU()(result)
+
+    result = LAYERS.Conv2D(
+        filters=64, kernel_size=3, strides=1, use_bias=False, kernel_regularizer=L2(weight_decay),
+        padding='same')(result)
+    if batch_normalization:
+        result = LAYERS.BatchNormalization()(result)
+    result = LAYERS.ReLU()(result)
+
+    result = xception_block(
+        inputs=result,
+        depth_list=[128, 128, 128],
+        strides_list=[1, 1, 2],
+        dilation_rate_list=[1, 1, 1],
+        skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
+        name='entry_flow/block1')
+
+    result = xception_block(
+        inputs=result,
+        depth_list=[256, 256, 256],
+        strides_list=[1, 1, 2],
+        dilation_rate_list=[1, 1, 1],
+        skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
+        name='entry_flow/block2')
+    skip = result
+
+    result = xception_block(
+        inputs=result,
+        depth_list=[728, 728, 728],
+        strides_list=[1, 1, 2],
+        dilation_rate_list=[1, 1, 1],
+        skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
+        name='entry_flow/block3')
+
+    for i in range(8):
+        result = xception_block(
+            inputs=result,
+            depth_list=[728, 728, 728],
+            strides_list=[1, 1, 1],
+            dilation_rate_list=[1, 1, 1],
+            skip_connection_type='sum',
+            weight_decay=weight_decay,
+            batch_normalization=batch_normalization,
+            name='middle_flow/block' + str(i + 1))
+
+    result = xception_block(
+        inputs=result,
+        depth_list=[728, 1024, 1024],
+        strides_list=[1, 1, 2],
+        dilation_rate_list=[1, 1, 1],
+        skip_connection_type='conv',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
+        name='exit_flow/block1')
+
+    result = xception_block(
+        inputs=result,
+        depth_list=[1536, 1536, 2048],
+        strides_list=[1, 1, 1],
+        dilation_rate_list=[1, 1, 1],
+        skip_connection_type='none',
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
+        name='exit_flow/block2')
+
+    return result, skip
+
 def xception_71(inputs, weight_decay=1e-5, batch_normalization=False):
     """Xception-71 model."""
 
@@ -143,7 +224,7 @@ def xception_71(inputs, weight_decay=1e-5, batch_normalization=False):
         batch_normalization=batch_normalization,
         name='entry_flow/block5')
 
-    for i in range(1):
+    for i in range(16):
         result = xception_block(
             inputs=result,
             depth_list=[728, 728, 728],
@@ -169,7 +250,7 @@ def xception_71(inputs, weight_decay=1e-5, batch_normalization=False):
         depth_list=[1536, 1536, 2048],
         strides_list=[1, 1, 1],
         dilation_rate_list=[1, 1, 1],
-        skip_connection_type='conv',
+        skip_connection_type='none',
         weight_decay=weight_decay,
         batch_normalization=batch_normalization,
         name='exit_flow/block2')
