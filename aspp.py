@@ -45,7 +45,7 @@ def sep_conv_bn_relu(inputs,
 
 def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
     """the DeepLabv3 ASPP module"""
-    output_stride = 16
+    output_stride = 32
 
     # Employ a 1x1 convolution.
     b_0 = LAYERS.Conv2D(

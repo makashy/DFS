@@ -102,20 +102,22 @@ def xception_41(inputs, weight_decay=1e-5, batch_normalization=False):
                            strides=2,
                            use_bias=False,
                            kernel_regularizer=L2(weight_decay),
-                           padding='same')(inputs)
+                           padding='same',
+                           name='entry_flow/conv32/conv_2d')(inputs)
     if batch_normalization:
-        result = LAYERS.BatchNormalization()(result)
-    result = LAYERS.ReLU()(result)
+        result = LAYERS.BatchNormalization(name='entry_flow/conv32/bn')(result)
+    result = LAYERS.ReLU(name='entry_flow/conv32/relu')(result)
 
     result = LAYERS.Conv2D(filters=64,
                            kernel_size=3,
                            strides=1,
                            use_bias=False,
                            kernel_regularizer=L2(weight_decay),
-                           padding='same')(result)
+                           padding='same',
+                           name='entry_flow/conv64/conv_2d')(result)
     if batch_normalization:
-        result = LAYERS.BatchNormalization()(result)
-    result = LAYERS.ReLU()(result)
+        result = LAYERS.BatchNormalization(name='entry_flow/conv64/bn')(result)
+    result = LAYERS.ReLU(name='entry_flow/conv64/relu')(result)
 
     result = xception_block(inputs=result,
                             depth_list=[128, 128, 128],
@@ -184,20 +186,22 @@ def xception_71(inputs, weight_decay=1e-5, batch_normalization=False):
                            strides=2,
                            use_bias=False,
                            kernel_regularizer=L2(weight_decay),
-                           padding='same')(inputs)
+                           padding='same',
+                           name='entry_flow/conv32/conv_2d')(inputs)
     if batch_normalization:
-        result = LAYERS.BatchNormalization()(result)
-    result = LAYERS.ReLU()(result)
+        result = LAYERS.BatchNormalization(name='entry_flow/conv32/bn')(result)
+    result = LAYERS.ReLU(name='entry_flow/conv32/relu')(result)
 
     result = LAYERS.Conv2D(filters=64,
                            kernel_size=3,
                            strides=1,
                            use_bias=False,
                            kernel_regularizer=L2(weight_decay),
-                           padding='same')(result)
+                           padding='same',
+                           name='entry_flow/conv64/conv_2d')(result)
     if batch_normalization:
-        result = LAYERS.BatchNormalization()(result)
-    result = LAYERS.ReLU()(result)
+        result = LAYERS.BatchNormalization(name='entry_flow/conv64/bn')(result)
+    result = LAYERS.ReLU(name='entry_flow/conv64/relu')(result)
 
     result = xception_block(inputs=result,
                             depth_list=[128, 128, 128],
@@ -264,14 +268,13 @@ def xception_71(inputs, weight_decay=1e-5, batch_normalization=False):
                             batch_normalization=batch_normalization,
                             name='exit_flow/block1')
 
-    result = xception_block(
-        inputs=result,
-        depth_list=[1536, 1536, 2048],
-        strides_list=[1, 1, 1],
-        dilation_rate_list=[1, 1, 1],
-        skip_connection_type='none',
-        weight_decay=weight_decay,
-        batch_normalization=batch_normalization,
-        name='exit_flow/block2')
+    result = xception_block(inputs=result,
+                            depth_list=[1536, 1536, 2048],
+                            strides_list=[1, 1, 1],
+                            dilation_rate_list=[1, 1, 1],
+                            skip_connection_type='none',
+                            weight_decay=weight_decay,
+                            batch_normalization=batch_normalization,
+                            name='exit_flow/block2')
 
     return result, skip
