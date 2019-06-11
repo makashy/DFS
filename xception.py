@@ -12,6 +12,40 @@ BATCH_NORM_DECAY = 0.9997
 BATCH_NORM_EPSILON = 1e-3
 BATCH_NORM_SCALE = True
 
+def sep_conv_bn_relu(inputs,
+                     filters=256,
+                     kernel_size=3,
+                     strides=1,
+                     dilation_rate=1,
+                     weight_decay=1e-5,
+                     batch_normalization=False,
+                     name="sepconv_bn"):
+    """An separable convolution with batch_normalization and relu
+    activation after depthwise and pointwise convolutions"""
+
+    with tf.name_scope(name):
+
+        result = LAYERS.DepthwiseConv2D(
+            kernel_size=kernel_size,
+            strides=strides,
+            padding='same',
+            depth_multiplier=1,
+            use_bias=False,
+            depthwise_regularizer=L2(weight_decay),
+            dilation_rate=dilation_rate)(inputs)
+        if batch_normalization:
+            result = LAYERS.BatchNormalization()(result)
+        result = LAYERS.Activation('relu')(result)
+        result = LAYERS.Conv2D(
+            filters=filters,
+            kernel_size=1,
+            use_bias=False,
+            kernel_regularizer=L2(weight_decay))(result)
+        if batch_normalization:
+            result = LAYERS.BatchNormalization()(result)
+        result = LAYERS.Activation('relu')(result)
+
+    return result
 
 def xception_block(inputs,
                    depth_list,
@@ -27,28 +61,13 @@ def xception_block(inputs,
         residual = inputs
 
         for i in range(3):
-            residual = LAYERS.Activation('relu')(residual)
-
-            residual = LAYERS.DepthwiseConv2D(
-                kernel_size=3,
-                strides=strides_list[i],
-                padding='same',
-                depth_multiplier=1,
-                use_bias=False,
-                depthwise_regularizer=L2(weight_decay),
-                dilation_rate=dilation_rate_list[i])(residual)
-
-            if batch_normalization:
-                residual = LAYERS.BatchNormalization()(residual)
-
-            residual = LAYERS.Conv2D(
-                filters=depth_list[i],
-                kernel_size=1,
-                use_bias=False,
-                kernel_regularizer=L2(weight_decay))(residual)
-
-            if batch_normalization:
-                residual = LAYERS.BatchNormalization()(residual)
+            residual = sep_conv_bn_relu(
+                                        inputs=residual,
+                                        filters=depth_list[i],
+                                        kernel_size=3,
+                                        strides=strides_list[i],
+                                        weight_decay=1e-5,
+                                        batch_normalization=batch_normalization)
 
         if skip_connection_type == 'conv':
 
