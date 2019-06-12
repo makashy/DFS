@@ -12,7 +12,7 @@ def deep_lab_v3(inputs):
     """Implementation of the Deeplabv3+ """
     batch_normalization = True
     weight_decay = 0.05
-    result, skip = xception.xception_71(
+    result, skip = xception.xception_41(
         inputs=inputs,
         weight_decay=weight_decay,
         batch_normalization=batch_normalization)
@@ -26,5 +26,10 @@ def deep_lab_v3(inputs):
         skip=skip,
         weight_decay=weight_decay,
         batch_normalization=batch_normalization)
+    result = deep_lab_decoder.get_logits(
+        inputs=result,
+        weight_decay=weight_decay,
+        batch_normalization=batch_normalization,
+        low_memory=True)
     model = MODEL(inputs=inputs, outputs=result, name='Deeplabv3+')
     return model
