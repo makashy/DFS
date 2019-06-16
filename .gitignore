@@ -112,3 +112,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Hierarchical Data Format
+*.h5
+
+#directories to ignore
+check later/
+.vscode/
+
+deeplabV3_original_graph/events.out.tfevents.1552587944.DESKTOP-16JB7AJ
