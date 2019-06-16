@@ -88,7 +88,7 @@ def get_logits(inputs,
         result = inputs
     else:
         result = LAYERS.UpSampling2D(size=(8, 8),
-                                     name='logits/final_upsample')(input)
+                                     name='logits/final_upsample')(inputs)
 
     result = LAYERS.Conv2D(
         filters=22,  # TODO: number of classes
