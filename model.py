@@ -30,6 +30,6 @@ def deep_lab_v3(inputs):
         inputs=result,
         weight_decay=weight_decay,
         batch_normalization=batch_normalization,
-        low_memory=True)
-    model = MODEL(inputs=inputs, outputs=result, name='Deeplabv3+')
+        low_memory=False)
+    model = MODEL(inputs=inputs, outputs=result, name='Deeplabv3plus')
     return model
