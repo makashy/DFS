@@ -1,7 +1,6 @@
 """ASPP block."""
 
 import tensorflow as tf
-import numpy as np
 
 LAYERS = tf.keras.layers
 L2 = tf.keras.regularizers.l2
@@ -41,9 +40,11 @@ def sep_conv_bn_relu(inputs,
     return result
 
 
-def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
+def aspp(inputs,
+         weight_decay=1e-5,
+         batch_normalization=False,
+         dilation_rates=[6, 12, 18]):
     """the DeepLabv3 ASPP module"""
-    output_stride = 32
 
     # Employ a 1x1 convolution.
     aspp_1x1 = LAYERS.Conv2D(filters=256,
@@ -64,7 +65,7 @@ def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
                                    filters=256,
                                    kernel_size=3,
                                    strides=1,
-                                   dilation_rate=6,
+                                   dilation_rate=dilation_rates[0],
                                    weight_decay=weight_decay,
                                    batch_normalization=batch_normalization,
                                    name='aspp/3x3_r6')
@@ -74,7 +75,7 @@ def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
                                     filters=256,
                                     kernel_size=3,
                                     strides=1,
-                                    dilation_rate=12,
+                                    dilation_rate=dilation_rates[1],
                                     weight_decay=weight_decay,
                                     batch_normalization=batch_normalization,
                                     name='aspp/3x3_r12')
@@ -84,14 +85,14 @@ def aspp(inputs, input_shape, weight_decay=1e-5, batch_normalization=False):
                                     filters=256,
                                     kernel_size=3,
                                     strides=1,
-                                    dilation_rate=18,
+                                    dilation_rate=dilation_rates[2],
                                     weight_decay=weight_decay,
                                     batch_normalization=batch_normalization,
                                     name='aspp/3x3_r18')
 
     # Image Feature branch
-    pool_height = int(np.ceil(input_shape[0] / output_stride))
-    pool_width = int(np.ceil(input_shape[1] / output_stride))
+    pool_height = inputs.shape.as_list()[1]
+    pool_width = inputs.shape.as_list()[2]
 
     aspp_image_features = LAYERS.AveragePooling2D(
         pool_size=[pool_height, pool_width],
