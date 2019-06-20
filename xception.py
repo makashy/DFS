@@ -93,8 +93,7 @@ def xception_block(inputs,
 
     return outputs
 
-
-def xception_41(inputs, weight_decay=1e-5, batch_normalization=False):
+def xception_41(inputs, weight_decay=1e-5, batch_normalization=False, output_stride=32):
     """Xception-41 model."""
 
     result = LAYERS.Conv2D(filters=32,
@@ -127,6 +126,8 @@ def xception_41(inputs, weight_decay=1e-5, batch_normalization=False):
                             weight_decay=weight_decay,
                             batch_normalization=batch_normalization,
                             name='entry_flow/block1')
+    if output_stride == 16:
+        skip = result
 
     result = xception_block(inputs=result,
                             depth_list=[256, 256, 256],
@@ -136,7 +137,8 @@ def xception_41(inputs, weight_decay=1e-5, batch_normalization=False):
                             weight_decay=weight_decay,
                             batch_normalization=batch_normalization,
                             name='entry_flow/block2')
-    skip = result
+    if output_stride == 32:
+        skip = result
 
     result = xception_block(inputs=result,
                             depth_list=[728, 728, 728],
@@ -157,9 +159,15 @@ def xception_41(inputs, weight_decay=1e-5, batch_normalization=False):
                                 batch_normalization=batch_normalization,
                                 name='middle_flow/block' + str(i + 1))
 
+    if output_stride == 16:
+        strides_list = [1, 1, 1]
+        dilation_rate_list = [2, 2, 2]
+    elif output_stride == 16:
+        strides_list = [1, 1, 2]
+        dilation_rate_list = [1, 1, 1]
     result = xception_block(inputs=result,
                             depth_list=[728, 1024, 1024],
-                            strides_list=[1, 1, 2],
+                            strides_list=strides_list,
                             dilation_rate_list=[1, 1, 1],
                             skip_connection_type='conv',
                             weight_decay=weight_decay,
@@ -169,7 +177,7 @@ def xception_41(inputs, weight_decay=1e-5, batch_normalization=False):
     result = xception_block(inputs=result,
                             depth_list=[1536, 1536, 2048],
                             strides_list=[1, 1, 1],
-                            dilation_rate_list=[1, 1, 1],
+                            dilation_rate_list=dilation_rate_list,
                             skip_connection_type='none',
                             weight_decay=weight_decay,
                             batch_normalization=batch_normalization,
