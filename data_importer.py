@@ -8,15 +8,20 @@ import numpy as np
 import pandas as pd
 import tables
 from skimage import img_as_float32
-from skimage import img_as_float64
+# from skimage import img_as_float64
 from skimage.io import imread
 from skimage.transform import resize
 from skimage import img_as_ubyte
-from skimage import img_as_uint
+# from skimage import img_as_uint
+from numba import jit
 
-import segmentation_dics
+# import segmentation_dics
 
-IMAGE = 0
+COMMON_LABE_IDS = [
+    3, 13, 15, 17, 19, 20, 27, 29, 30, 45, 48, 50, 52, 54, 55, 57, 58, 61, 65
+]
+
+RGB = 0
 SEGMENTATION = 1
 INSTANCE = 2
 DEPTH = 3
@@ -24,6 +29,39 @@ DEPTH = 3
 TRAIN = 0
 VALIDATION = 1
 TEST = 2
+
+@jit(nopython=True)
+def label_slicer(raw_label, class_color):
+    """ Creates a channel for a specific segmentation class from the given raw label """
+    return (raw_label[:, :, 0] == class_color[0])* \
+           (raw_label[:, :, 1] == class_color[1])* \
+           (raw_label[:, :, 2] == class_color[2])
+
+
+def one_hot(label_table,
+            raw_label,
+            class_ids=COMMON_LABE_IDS,
+            dataset_name='SYNTHIA'):
+    """ Creates a one-hot label for a group of segmentation classes from the given raw label """
+    one_hot_label = np.ndarray(shape=(raw_label.shape[0], raw_label.shape[1],
+                                      len(class_ids)),
+                               dtype=np.uint8)
+    for i, class_id in enumerate(class_ids):
+        class_color = label_table.loc[class_id, dataset_name]
+        one_hot_label[:, :, i] = label_slicer(raw_label, class_color)
+    return one_hot_label
+
+def sparse(label_table,
+           raw_label,
+           class_ids=COMMON_LABE_IDS,
+           dataset_name='SYNTHIA'):
+    """ Creates a one-hot label for a group of segmentation classes from the given raw label """
+    label = np.zeros(shape=(raw_label.shape[0], raw_label.shape[1], 1), dtype=np.uint8)
+    for i, class_id in enumerate(class_ids):
+        class_color = label_table.loc[class_id, dataset_name]
+        label[:, :, 0] = label[:, :, 0] + label_slicer(raw_label, class_color)*i
+    return label
+
 
 class DatasetGenerator:
     """Abstract iterator for looping over elements of a dataset .
@@ -70,6 +108,7 @@ class DatasetGenerator:
         self.end_index = np.int32(np.floor(self.ratio[TRAIN] * self.size))
         self.dataset_usage(usage)
         self.index = self.start_index
+        self.label_table = self.load_label_table(kwargs['table_address'])
 
     def data_frame_creator(self):
         """Pandas dataFrame for addresses of images and corresponding labels"""
@@ -95,6 +134,17 @@ class DatasetGenerator:
             print('Invalid input for usage variable')
             raise NameError('InvalidInput')
 
+    def load_label_table(self, table_address):
+        """ Creates a pandas data frame (from a CSV file) having information
+        about segmentation class colors """
+        label_table = pd.read_csv(table_address, index_col=0)
+        for dataset_name in label_table.columns[3:]:
+            color_list = label_table.loc[:, dataset_name]
+            for i, color in enumerate(color_list):
+                if color != 'None':
+                    color_list[i] = np.fromstring(color_list[i][1:-1], dtype=np.uint8, sep=',')
+        return label_table
+
     def __iter__(self):
         return self
 
@@ -104,15 +154,15 @@ class DatasetGenerator:
     def next(self):
         """Retrieve the next pairs from the dataset"""
 
-        if self.index - self.batch_size <= 0:
+        if self.index + self.batch_size > self.end_index:
             if not self.repeater:
                 raise StopIteration
             else:
-                self.index = self.dataset.shape[0] - 1
-        self.index = self.index - self.batch_size
+                self.index = self.start_index
+        self.index = self.index + self.batch_size
 
         # loading features(images)
-        features = imread(self.dataset.loc[:, 'image'].iat[0])[:, :, :3]
+        features = imread(self.dataset.RGB[0])[:, :, :3]
 
         if self.output_shape is None:
             output_shape = features.shape[:2]
@@ -123,48 +173,41 @@ class DatasetGenerator:
         # 2) Also the input image is converted (from 8-bit integer)
         # to 64-bit floating point(->preserve_range=False).
         # 3) [:, :, :3] -> to remove 4th channel in png
+
         features = np.array([
-            resize(image=imread(self.dataset.loc[:, 'image'].iat[i])[:, :, :3],
+            resize(image=imread(self.dataset.RGB[i])[:, :, :3],
                    output_shape=output_shape,
                    mode='constant',
                    preserve_range=False,
                    anti_aliasing=True)
-            for i in range(self.index, self.index + self.batch_size)
+            for i in range(self.index - self.batch_size, self.index)
         ])
 
         if self.data_type is 'float32':
             features = img_as_float32(features)
 
         # loading labels(segmentation)
-        if 'segmentation' in self.label_type:
-            # 1) Resize segmentation to match a certain size.
-            # 2) [:, :, :3] -> to remove 4th channel in png
+        if self.label_type == 'segmentation':
             segmentation = np.array([
-                imread(self.dataset.loc[:, 'segmentation'].iat[i])[:, :, :3]
-                for i in range(self.index, self.index + self.batch_size)
+                one_hot(
+                    self.label_table,
+                    img_as_ubyte(
+                        resize(image=imread(
+                            self.dataset.SEGMENTATION[i])[:, :, :3],
+                               output_shape=self.output_shape)))
+                for i in range(self.index - self.batch_size, self.index)
             ])
 
-            # resize(image=,
-            # output_shape=output_shape,
-            #         mode='constant',
-            #         preserve_range=True,
-            #         anti_aliasing=True)
-
-            # new_segmentation = np.zeros(
-            #     shape=(self.batch_size, output_shape[0], output_shape[1],
-            #            len(self.seg_dic)))
-            # for i in range(self.batch_size):
-            #     for j in range(output_shape[0]):
-            #         for k in range(output_shape[1]):
-            #             new_segmentation[i, j, k,
-            #             self.seg_dic[
-            #                 tuple(segmentation[i, j, k]) ][0]] = 1
-            # segmentation = new_segmentation
-
-            if self.data_type is 'float32':
-                segmentation = img_as_float32(segmentation)
-            else:
-                segmentation = img_as_float64(segmentation)
+        if self.label_type == 'sparse_segmentation':
+            segmentation = np.array([
+                sparse(
+                    self.label_table,
+                    img_as_ubyte(
+                        resize(image=imread(
+                            self.dataset.SEGMENTATION[i])[:, :, :3],
+                               output_shape=self.output_shape)))
+                for i in range(self.index - self.batch_size, self.index)
+            ])
 
         # if self.label_type == 'depth':
         #     labels = np.array(
@@ -178,27 +221,6 @@ class DatasetGenerator:
         #     labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
         #               labels[:, :, :, 2] * 256 * 256) / ((256 * 256 * 256) - 1)
 
-        # elif self.label_type == 'segmentation':
-        #     labels = np.array(
-        #         np.array([
-        #             resize(
-        #                 image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-        #                 output_shape=(480, 640))
-        #             for i in range(self.index, self.index + self.batch_size)
-        #         ]))
-
-        #     new_segmentation = np.ndarray(shape=(self.batch_size, 480, 640, 22))
-        #     for i in range(self.batch_size):
-        #         for j in range(480):
-        #             for k in range(640):
-        #                 if labels[i, j, k] < 22:
-        #                     new_segmentation[i, j, k, int(labels[i, j, k])] = 1
-        #     labels = new_segmentation
-        #     labels = np.array(labels, dtype=np.float32)
-        # else:
-        #     raise ValueError('invalid label type')
-
-        # return features, labels
         return features, segmentation
 
 
@@ -218,7 +240,7 @@ class NewSynthiaSf(DatasetGenerator):
         ]
         rgb_folder = ['/RGBLeft/', '/RGBRight/']
         depth_folder = ['/DepthLeft/', '/DepthRight/']
-        segmentation_folder = ['/GTLeft/', '/GTright/']
+        segmentation_folder = ['/GTLeftDebug/', '/GTrightDebug/']
         rgb_dir = [
             self.dataset_dir + sequence_f + rgb_f for rgb_f in rgb_folder
             for sequence_f in sequence_folder
@@ -259,64 +281,64 @@ class NewSynthiaSf(DatasetGenerator):
 
         return pd.DataFrame(dataset)
 
-    def next(self):
-        """Retrieve the next pairs from the dataset"""
+    # def next(self):
+    #     """Retrieve the next pairs from the dataset"""
 
-        if self.index + self.batch_size > self.end_index:
-            if not self.repeater:
-                raise StopIteration
-            else:
-                self.index = self.start_index
-        self.index = self.index + self.batch_size
+    #     if self.index + self.batch_size > self.end_index:
+    #         if not self.repeater:
+    #             raise StopIteration
+    #         else:
+    #             self.index = self.start_index
+    #     self.index = self.index + self.batch_size
 
-        features = np.array([
-            resize(image=imread(self.dataset.iloc[i, 0])[:, :, :3],
-                   output_shape=self.output_shape)
-            for i in range(self.index - self.batch_size, self.index)
-        ])
-        features = np.array(features, dtype=np.float32)
+    #     features = np.array([
+    #         resize(image=imread(self.dataset.iloc[i, 0])[:, :, :3],
+    #                output_shape=self.output_shape)
+    #         for i in range(self.index - self.batch_size, self.index)
+    #     ])
+    #     features = np.array(features, dtype=np.float32)
 
-        if self.label_type == 'depth':
-            labels = np.array([
-                resize(image=imread(self.dataset.iloc[i, 1]),
-                       output_shape=self.output_shape)
-                for i in range(self.index, self.index + self.batch_size)
-            ])
-            labels = img_as_ubyte(labels)
-            labels = np.array(labels, dtype=np.float)
-            labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
-                      labels[:, :, :, 2] * 256 * 256) / (
-                          (256 * 256 * 256) - 1) * self.max_distance
+    #     if self.label_type == 'depth':
+    #         labels = np.array([
+    #             resize(image=imread(self.dataset.iloc[i, 1]),
+    #                    output_shape=self.output_shape)
+    #             for i in range(self.index, self.index + self.batch_size)
+    #         ])
+    #         labels = img_as_ubyte(labels)
+    #         labels = np.array(labels, dtype=np.float)
+    #         labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
+    #                   labels[:, :, :, 2] * 256 * 256) / (
+    #                       (256 * 256 * 256) - 1) * self.max_distance
 
-        elif self.label_type == 'segmentation':
-            labels = np.array([
-                resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-                       output_shape=self.output_shape)
-                for i in range(self.index - self.batch_size, self.index)
-            ])
-            labels = img_as_ubyte(labels)
+    #     elif self.label_type == 'segmentation':
+    #         labels = np.array([
+    #             resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
+    #                    output_shape=self.output_shape)
+    #             for i in range(self.index - self.batch_size, self.index)
+    #         ])
+    #         labels = img_as_ubyte(labels)
 
-            new_segmentation = np.ndarray(shape=(self.batch_size, 480, 640,
-                                                 22))
+    #         new_segmentation = np.ndarray(shape=(self.batch_size, 480, 640,
+    #                                              22))
 
-            for i in range(self.batch_size):
-                for j in range(480):
-                    for k in range(640):
-                        if labels[i, j, k] < 22:
-                            new_segmentation[i, j, k, int(labels[i, j, k])] = 1
-            labels = new_segmentation
+    #         for i in range(self.batch_size):
+    #             for j in range(480):
+    #                 for k in range(640):
+    #                     if labels[i, j, k] < 22:
+    #                         new_segmentation[i, j, k, int(labels[i, j, k])] = 1
+    #         labels = new_segmentation
 
-        elif self.label_type == 'sparse_segmentation':
-            labels = np.array([
-                resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-                       output_shape=self.output_shape + (1, ))
-                for i in range(self.index - self.batch_size, self.index)
-            ])
-            labels = img_as_ubyte(labels)
-        else:
-            raise ValueError('invalid label type')
+    #     elif self.label_type == 'sparse_segmentation':
+    #         labels = np.array([
+    #             resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
+    #                    output_shape=self.output_shape + (1, ))
+    #             for i in range(self.index - self.batch_size, self.index)
+    #         ])
+    #         labels = img_as_ubyte(labels)
+    #     else:
+    #         raise ValueError('invalid label type')
 
-        return features, labels
+    #     return features, labels
 
 
 class NYU:
@@ -382,141 +404,6 @@ class NYU:
                             new_segmentation[i, j, k, int(labels[i, j, k])] = 1
             labels = new_segmentation
             labels = np.array(labels, dtype=np.float16)
-        else:
-            raise ValueError('invalid label type')
-
-        return features, labels
-
-
-class SynthiaSf:
-    """Iterator for looping over elements of SYNTHIA-SF backwards."""
-
-    def __init__(self,
-                 synthia_sf_address,
-                 batch_size=1,
-                 repeater=False,
-                 label_type='segmentation',
-                 shuffle=False):
-
-        self.dataset_address = synthia_sf_address
-        self.sequence_folder = [
-            '/SEQ1', '/SEQ2', '/SEQ3', '/SEQ4', '/SEQ5', '/SEQ6'
-        ]
-        self.rgb_folder = ['/RGBLeft/', '/RGBRight/']
-        self.depth_folder = ['/DepthLeft/', '/DepthRight/']
-        self.segmentation_folder = ['/GTLeft/', '/GTright/']
-        self.batch_size = batch_size
-        self.repeater = repeater
-        self.label_type = label_type
-        self.shuffle = shuffle
-        self.dataset = self.data_frame_creator()
-        self.index = self.dataset.shape[0] - 1
-        self.max_distance = 1000
-
-    def data_frame_creator(self):
-        """ pandas dataFrame for addresses of rgb, depth and segmentation"""
-
-        rgb_dir = [
-            self.dataset_address + sequence_f + rgb_f
-            for rgb_f in self.rgb_folder for sequence_f in self.sequence_folder
-        ]
-        rgb_data = [
-            rgb_d + rgb for rgb_d in rgb_dir for rgb in os.listdir(rgb_d)
-        ]
-
-        depth_dir = [
-            self.dataset_address + sequence_f + depth_f
-            for depth_f in self.depth_folder
-            for sequence_f in self.sequence_folder
-        ]
-        depth_data = [
-            depth_d + depth for depth_d in depth_dir
-            for depth in os.listdir(depth_d)
-        ]
-
-        segmentation_dir = [
-            self.dataset_address + sequence_f + segmentation_f
-            for segmentation_f in self.segmentation_folder
-            for sequence_f in self.sequence_folder
-        ]
-        segmentation_data = [
-            segmentation_d + segmentation
-            for segmentation_d in segmentation_dir
-            for segmentation in os.listdir(segmentation_d)
-        ]
-
-        dataset = {
-            'RGB': rgb_data,
-            'DEPTH': depth_data,
-            'SEGMENTATION': segmentation_data
-        }
-
-        if self.shuffle:
-            return pd.DataFrame(dataset).sample(frac=1)
-
-        return pd.DataFrame(dataset)
-
-    def __iter__(self):
-        return self
-
-    # Python 3 compatibility
-    def __next__(self):
-        return self.next()
-
-    def next(self):
-        """Retrieve the next pairs from the dataset"""
-
-        if self.index - self.batch_size <= 0:
-            if not self.repeater:
-                raise StopIteration
-            else:
-                self.index = self.dataset.shape[0] - 1
-        self.index = self.index - self.batch_size
-
-        features = np.array([
-            resize(image=imread(self.dataset.iloc[i, 0])[:, :, :3],
-                   output_shape=(480, 640))
-            for i in range(self.index, self.index + self.batch_size)
-        ])
-        # features = np.array(features / 255., dtype=np.float32)
-
-        if self.label_type == 'depth':
-            labels = np.array([
-                resize(image=imread(self.dataset.iloc[i, 1]),
-                       output_shape=(480, 640))
-                for i in range(self.index, self.index + self.batch_size)
-            ])
-            labels = img_as_ubyte(labels)
-            labels = np.array(labels, dtype=np.float)
-            labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
-                      labels[:, :, :, 2] * 256 * 256) / (
-                          (256 * 256 * 256) - 1) * self.max_distance
-
-        elif self.label_type == 'segmentation':
-            labels = np.array([
-                resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-                       output_shape=(480, 640))
-                for i in range(self.index, self.index + self.batch_size)
-            ])
-            labels = img_as_ubyte(labels)
-
-            new_segmentation = np.ndarray(shape=(self.batch_size, 480, 640,
-                                                 22))
-
-            for i in range(self.batch_size):
-                for j in range(480):
-                    for k in range(640):
-                        if labels[i, j, k] < 22:
-                            new_segmentation[i, j, k, int(labels[i, j, k])] = 1
-            labels = new_segmentation
-
-        elif self.label_type == 'sparse_segmentation':
-            labels = np.array([
-                resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-                       output_shape=(480, 640, 1))
-                for i in range(self.index, self.index + self.batch_size)
-            ])
-            labels = img_as_ubyte(labels)
         else:
             raise ValueError('invalid label type')
 
