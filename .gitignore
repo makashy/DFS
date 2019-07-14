@@ -118,6 +118,8 @@ dmypy.json
 
 #directories to ignore
 check later/
+log/
 .vscode/
 
 deeplabV3_original_graph/events.out.tfevents.1552587944.DESKTOP-16JB7AJ
+.pylintrc
