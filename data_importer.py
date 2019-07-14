@@ -7,15 +7,12 @@ import os
 import numpy as np
 import pandas as pd
 import tables
-from skimage import img_as_float32
-# from skimage import img_as_float64
-from skimage.io import imread
-from skimage.transform import resize
-from skimage import img_as_ubyte
-# from skimage import img_as_uint
 from numba import jit
+from skimage import img_as_float32, img_as_ubyte
+from skimage.io import imread
 
-# import segmentation_dics
+# from skimage.transform import resize
+from cv2 import resize
 
 COMMON_LABE_IDS = [
     3, 13, 15, 17, 19, 20, 27, 29, 30, 45, 48, 50, 52, 54, 55, 57, 58, 61, 65
@@ -29,6 +26,7 @@ DEPTH = 3
 TRAIN = 0
 VALIDATION = 1
 TEST = 2
+
 
 @jit(nopython=True)
 def label_slicer(raw_label, class_color):
@@ -51,15 +49,18 @@ def one_hot(label_table,
         one_hot_label[:, :, i] = label_slicer(raw_label, class_color)
     return one_hot_label
 
+
 def sparse(label_table,
            raw_label,
            class_ids=COMMON_LABE_IDS,
            dataset_name='SYNTHIA'):
     """ Creates a one-hot label for a group of segmentation classes from the given raw label """
-    label = np.zeros(shape=(raw_label.shape[0], raw_label.shape[1], 1), dtype=np.uint8)
+    label = np.zeros(shape=(raw_label.shape[0], raw_label.shape[1], 1),
+                     dtype=np.uint8)
     for i, class_id in enumerate(class_ids):
         class_color = label_table.loc[class_id, dataset_name]
-        label[:, :, 0] = label[:, :, 0] + label_slicer(raw_label, class_color)*i
+        label[:, :, 0] = label[:, :, 0] + label_slicer(raw_label,
+                                                       class_color) * i
     return label
 
 
@@ -90,8 +91,7 @@ class DatasetGenerator:
                  data_type='float64',
                  label_type=('segmentation', 'instance', 'depth'),
                  **kwargs):
-        self.ratio = kwargs[
-            'ratio'] if 'ratio' in kwargs else ratio
+        self.ratio = kwargs['ratio'] if 'ratio' in kwargs else ratio
         self.batch_size = kwargs[
             'batch_size'] if 'batch_size' in kwargs else batch_size
         self.repeater = kwargs['repeater'] if 'repeater' in kwargs else repeater
@@ -125,10 +125,15 @@ class DatasetGenerator:
             self.start_index = 0
             self.end_index = np.int32(np.floor(self.ratio[TRAIN] * self.size))
         elif usage is 'validation':
-            self.start_index = np.int32(np.floor(self.ratio[TRAIN] * self.size))
-            self.end_index = np.int32(np.floor((self.ratio[TRAIN] + self.ratio[VALIDATION])* self.size))
+            self.start_index = np.int32(np.floor(self.ratio[TRAIN] *
+                                                 self.size))
+            self.end_index = np.int32(
+                np.floor(
+                    (self.ratio[TRAIN] + self.ratio[VALIDATION]) * self.size))
         elif usage is 'test':
-            self.start_index = np.int32(np.floor((self.ratio[TRAIN] + self.ratio[VALIDATION])* self.size))
+            self.start_index = np.int32(
+                np.floor(
+                    (self.ratio[TRAIN] + self.ratio[VALIDATION]) * self.size))
             self.end_index = self.size
         else:
             print('Invalid input for usage variable')
@@ -142,7 +147,9 @@ class DatasetGenerator:
             color_list = label_table.loc[:, dataset_name]
             for i, color in enumerate(color_list):
                 if color != 'None':
-                    color_list[i] = np.fromstring(color_list[i][1:-1], dtype=np.uint8, sep=',')
+                    color_list[i] = np.fromstring(color_list[i][1:-1],
+                                                  dtype=np.uint8,
+                                                  sep=',')
         return label_table
 
     def __iter__(self):
@@ -175,11 +182,8 @@ class DatasetGenerator:
         # 3) [:, :, :3] -> to remove 4th channel in png
 
         features = np.array([
-            resize(image=imread(self.dataset.RGB[i])[:, :, :3],
-                   output_shape=output_shape,
-                   mode='constant',
-                   preserve_range=False,
-                   anti_aliasing=True)
+            resize(src=imread(self.dataset.RGB[i])[:, :, :3],
+                   dsize=(output_shape[1], output_shape[0]))
             for i in range(self.index - self.batch_size, self.index)
         ])
 
@@ -192,9 +196,9 @@ class DatasetGenerator:
                 one_hot(
                     self.label_table,
                     img_as_ubyte(
-                        resize(image=imread(
+                        resize(src=imread(
                             self.dataset.SEGMENTATION[i])[:, :, :3],
-                               output_shape=self.output_shape)))
+                               dsize=(output_shape[1], output_shape[0]))))
                 for i in range(self.index - self.batch_size, self.index)
             ])
 
@@ -203,9 +207,9 @@ class DatasetGenerator:
                 sparse(
                     self.label_table,
                     img_as_ubyte(
-                        resize(image=imread(
+                        resize(src=imread(
                             self.dataset.SEGMENTATION[i])[:, :, :3],
-                               output_shape=self.output_shape)))
+                               dsize=(output_shape[1], output_shape[0]))))
                 for i in range(self.index - self.batch_size, self.index)
             ])
 
@@ -220,7 +224,6 @@ class DatasetGenerator:
         #         dtype=np.int32)
         #     labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
         #               labels[:, :, :, 2] * 256 * 256) / ((256 * 256 * 256) - 1)
-
         return features, segmentation
 
 
@@ -250,8 +253,7 @@ class NewSynthiaSf(DatasetGenerator):
         ]
 
         depth_dir = [
-            self.dataset_dir + sequence_f + depth_f
-            for depth_f in depth_folder
+            self.dataset_dir + sequence_f + depth_f for depth_f in depth_folder
             for sequence_f in sequence_folder
         ]
         depth_data = [
