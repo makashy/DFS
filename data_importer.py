@@ -14,7 +14,7 @@ from skimage.io import imread
 # from skimage.transform import resize
 from cv2 import resize
 
-COMMON_LABE_IDS = [
+COMMON_LABEL_IDS = [
     3, 13, 15, 17, 19, 20, 27, 29, 30, 45, 48, 50, 52, 54, 55, 57, 58, 61, 65
 ]
 
@@ -38,8 +38,8 @@ def label_slicer(raw_label, class_color):
 
 def one_hot(label_table,
             raw_label,
-            class_ids=COMMON_LABE_IDS,
-            dataset_name='SYNTHIA'):
+            class_ids=COMMON_LABEL_IDS,
+            dataset_name='SYNTHIA_SF'):
     """ Creates a one-hot label for a group of segmentation classes from the given raw label """
     one_hot_label = np.ndarray(shape=(raw_label.shape[0], raw_label.shape[1],
                                       len(class_ids)),
@@ -52,9 +52,9 @@ def one_hot(label_table,
 
 def sparse(label_table,
            raw_label,
-           class_ids=COMMON_LABE_IDS,
-           dataset_name='SYNTHIA'):
-    """ Creates a one-hot label for a group of segmentation classes from the given raw label """
+           class_ids=COMMON_LABEL_IDS,
+           dataset_name='SYNTHIA_SF'):
+    """ Creates a sparse label for a group of segmentation classes from the given raw label """
     label = np.zeros(shape=(raw_label.shape[0], raw_label.shape[1], 1),
                      dtype=np.uint8)
     for i, class_id in enumerate(class_ids):
@@ -82,6 +82,7 @@ class DatasetGenerator:
     """
 
     def __init__(self,
+                 table_address,
                  usage='train',
                  ratio=(1, 0),
                  batch_size=1,
@@ -90,25 +91,23 @@ class DatasetGenerator:
                  output_shape=None,
                  data_type='float64',
                  label_type=('segmentation', 'instance', 'depth'),
-                 **kwargs):
-        self.ratio = kwargs['ratio'] if 'ratio' in kwargs else ratio
-        self.batch_size = kwargs[
-            'batch_size'] if 'batch_size' in kwargs else batch_size
-        self.repeater = kwargs['repeater'] if 'repeater' in kwargs else repeater
-        self.shuffle = kwargs['shuffle'] if 'shuffle' in kwargs else shuffle
-        self.output_shape = kwargs[
-            'output_shape'] if 'output_shape' in kwargs else output_shape
-        self.data_type = kwargs[
-            'data_type'] if 'data_type' in kwargs else data_type
-        self.label_type = kwargs[
-            'label_type'] if 'label_type' in kwargs else label_type
+                 dataset_name='SYNTHIA_SF'):
+        self.usage = usage
+        self.ratio = ratio
+        self.batch_size = batch_size
+        self.repeater = repeater
+        self.shuffle = shuffle
+        self.output_shape = output_shape
+        self.data_type = data_type
+        self.label_type = label_type
+        self.dataset_name = dataset_name
         self.dataset = self.data_frame_creator()
         self.size = self.dataset.shape[0] - 1
         self.start_index = 0
         self.end_index = np.int32(np.floor(self.ratio[TRAIN] * self.size))
         self.dataset_usage(usage)
         self.index = self.start_index
-        self.label_table = self.load_label_table(kwargs['table_address'])
+        self.label_table = self.load_label_table(table_address)
 
     def data_frame_creator(self):
         """Pandas dataFrame for addresses of images and corresponding labels"""
@@ -193,23 +192,23 @@ class DatasetGenerator:
         # loading labels(segmentation)
         if self.label_type == 'segmentation':
             segmentation = np.array([
-                one_hot(
-                    self.label_table,
-                    img_as_ubyte(
-                        resize(src=imread(
-                            self.dataset.SEGMENTATION[i])[:, :, :3],
-                               dsize=(output_shape[1], output_shape[0]))))
+                one_hot(self.label_table,
+                        img_as_ubyte(
+                            resize(src=imread(
+                                self.dataset.SEGMENTATION[i])[:, :, :3],
+                                   dsize=(output_shape[1], output_shape[0]))),
+                        dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
             ])
 
         if self.label_type == 'sparse_segmentation':
             segmentation = np.array([
-                sparse(
-                    self.label_table,
-                    img_as_ubyte(
-                        resize(src=imread(
-                            self.dataset.SEGMENTATION[i])[:, :, :3],
-                               dsize=(output_shape[1], output_shape[0]))))
+                sparse(self.label_table,
+                       img_as_ubyte(
+                           resize(src=imread(
+                               self.dataset.SEGMENTATION[i])[:, :, :3],
+                                  dsize=(output_shape[1], output_shape[0]))),
+                       dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
             ])
 
@@ -230,11 +229,11 @@ class DatasetGenerator:
 class NewSynthiaSf(DatasetGenerator):
     """Iterator for looping over elements of SYNTHIA-SF backwards."""
 
-    def __init__(self, synthia_sf_dir, **kwargs):
+    def __init__(self, dataset_dir, **kwargs):
 
-        self.dataset_dir = synthia_sf_dir
+        self.dataset_dir = dataset_dir
         self.max_distance = 1000
-        super().__init__(**kwargs)
+        super().__init__(dataset_name='SYNTHIA_SF', **kwargs)
 
     def data_frame_creator(self):
         """ pandas dataFrame for addresses of rgb, depth and segmentation"""
@@ -279,68 +278,9 @@ class NewSynthiaSf(DatasetGenerator):
         }
 
         if self.shuffle:
-            return pd.DataFrame(dataset).sample(frac=1, random_state=123)
+            return pd.DataFrame(dataset).sample(frac=1, random_state=123).reset_index(drop=True)
 
         return pd.DataFrame(dataset)
-
-    # def next(self):
-    #     """Retrieve the next pairs from the dataset"""
-
-    #     if self.index + self.batch_size > self.end_index:
-    #         if not self.repeater:
-    #             raise StopIteration
-    #         else:
-    #             self.index = self.start_index
-    #     self.index = self.index + self.batch_size
-
-    #     features = np.array([
-    #         resize(image=imread(self.dataset.iloc[i, 0])[:, :, :3],
-    #                output_shape=self.output_shape)
-    #         for i in range(self.index - self.batch_size, self.index)
-    #     ])
-    #     features = np.array(features, dtype=np.float32)
-
-    #     if self.label_type == 'depth':
-    #         labels = np.array([
-    #             resize(image=imread(self.dataset.iloc[i, 1]),
-    #                    output_shape=self.output_shape)
-    #             for i in range(self.index, self.index + self.batch_size)
-    #         ])
-    #         labels = img_as_ubyte(labels)
-    #         labels = np.array(labels, dtype=np.float)
-    #         labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
-    #                   labels[:, :, :, 2] * 256 * 256) / (
-    #                       (256 * 256 * 256) - 1) * self.max_distance
-
-    #     elif self.label_type == 'segmentation':
-    #         labels = np.array([
-    #             resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-    #                    output_shape=self.output_shape)
-    #             for i in range(self.index - self.batch_size, self.index)
-    #         ])
-    #         labels = img_as_ubyte(labels)
-
-    #         new_segmentation = np.ndarray(shape=(self.batch_size, 480, 640,
-    #                                              22))
-
-    #         for i in range(self.batch_size):
-    #             for j in range(480):
-    #                 for k in range(640):
-    #                     if labels[i, j, k] < 22:
-    #                         new_segmentation[i, j, k, int(labels[i, j, k])] = 1
-    #         labels = new_segmentation
-
-    #     elif self.label_type == 'sparse_segmentation':
-    #         labels = np.array([
-    #             resize(image=imread(self.dataset.iloc[i, 2])[:, :, 0],
-    #                    output_shape=self.output_shape + (1, ))
-    #             for i in range(self.index - self.batch_size, self.index)
-    #         ])
-    #         labels = img_as_ubyte(labels)
-    #     else:
-    #         raise ValueError('invalid label type')
-
-    #     return features, labels
 
 
 class NYU:
@@ -412,44 +352,74 @@ class NYU:
         return features, labels
 
 
-# class VIPER(DatasetGenerator):
-#     """Iterator for looping over elements of a VIPER(PlayForBenchmark) dataset ."""
+class VIPER(DatasetGenerator):
+    """Iterator for looping over elements of a VIPER(PlayForBenchmark) dataset ."""
 
-#     def init(self):
-#         self.seg_dic = segmentation_dics.VIPER
+    def __init__(self, dataset_dir, **kwargs):
 
-#     def data_frame_creator(self):
-#         """Pandas dataFrame for addresses of images and corresponding labels"""
-#         img_dir_list = [
-#             self.dataset_dir + '/train' + '/img' + '/' + seq_dir + '/' +
-#             img_name
-#             for seq_dir in os.listdir(self.dataset_dir + '/train/' + '/img/')
-#             for img_name in os.listdir(self.dataset_dir + '/train/' + '/img/' +
-#                                        seq_dir)
-#         ]
+        self.dataset_dir = dataset_dir
+        super().__init__(dataset_name='VIPER', **kwargs)
 
-#         cls_dir_list = [
-#             self.dataset_dir + '/train' + '/cls' + '/' + seq_dir + '/' +
-#             img_name
-#             for seq_dir in os.listdir(self.dataset_dir + '/train/' + '/cls/')
-#             for img_name in os.listdir(self.dataset_dir + '/train/' + '/cls/' +
-#                                        seq_dir)
-#         ]
+    def data_frame_creator(self):
+        """Pandas dataFrame for addresses of images and corresponding labels"""
+        if self.usage == 'train' or self.usage == 'train':
 
-#         inst_dir_list = [
-#             self.dataset_dir + '/train' + '/inst' + '/' + seq_dir + '/' +
-#             img_name
-#             for seq_dir in os.listdir(self.dataset_dir + '/train/' + '/inst/')
-#             for img_name in os.listdir(self.dataset_dir + '/train/' +
-#                                        '/inst/' + seq_dir)
-#         ]
+            img_dir_list = [
+                self.dataset_dir + '/train' + '/img' + '/' + seq_dir + '/' +
+                img_name for seq_dir in os.listdir(self.dataset_dir +
+                                                   '/train/' + '/img/')
+                for img_name in os.listdir(self.dataset_dir + '/train/' +
+                                           '/img/' + seq_dir)
+            ]
 
-#         dataset = {
-#             'image': img_dir_list,
-#             'segmentation': cls_dir_list,
-#             'instance': inst_dir_list
-#         }
+            cls_dir_list = [
+                self.dataset_dir + '/train' + '/cls' + '/' + seq_dir + '/' +
+                img_name for seq_dir in os.listdir(self.dataset_dir +
+                                                   '/train/' + '/cls/')
+                for img_name in os.listdir(self.dataset_dir + '/train/' +
+                                           '/cls/' + seq_dir)
+            ]
 
-#         if self.shuffle:
-#             return pd.DataFrame(dataset).sample(frac=1)
-#         return pd.DataFrame(dataset)
+            inst_dir_list = [
+                self.dataset_dir + '/train' + '/inst' + '/' + seq_dir + '/' +
+                img_name for seq_dir in os.listdir(self.dataset_dir +
+                                                   '/train/' + '/inst/')
+                for img_name in os.listdir(self.dataset_dir + '/train/' +
+                                           '/inst/' + seq_dir)
+            ]
+
+        else:
+
+            img_dir_list = [
+                self.dataset_dir + '/val' + '/img' + '/' + seq_dir + '/' +
+                img_name for seq_dir in os.listdir(self.dataset_dir +
+                                                   '/train/' + '/img/')
+                for img_name in os.listdir(self.dataset_dir + '/train/' +
+                                           '/img/' + seq_dir)
+            ]
+
+            cls_dir_list = [
+                self.dataset_dir + '/val' + '/cls' + '/' + seq_dir + '/' +
+                img_name for seq_dir in os.listdir(self.dataset_dir +
+                                                   '/train/' + '/cls/')
+                for img_name in os.listdir(self.dataset_dir + '/train/' +
+                                           '/cls/' + seq_dir)
+            ]
+
+            inst_dir_list = [
+                self.dataset_dir + '/val' + '/inst' + '/' + seq_dir + '/' +
+                img_name for seq_dir in os.listdir(self.dataset_dir +
+                                                   '/train/' + '/inst/')
+                for img_name in os.listdir(self.dataset_dir + '/train/' +
+                                           '/inst/' + seq_dir)
+            ]
+
+        dataset = {
+            'RGB': img_dir_list,
+            'SEGMENTATION': cls_dir_list,
+            'INSTANCE': inst_dir_list
+        }
+
+        if self.shuffle:
+            return pd.DataFrame(dataset).sample(frac=1, random_state=123).reset_index(drop=True)
+        return pd.DataFrame(dataset)
