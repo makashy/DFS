@@ -363,57 +363,39 @@ class VIPER(DatasetGenerator):
 
     def data_frame_creator(self):
         """Pandas dataFrame for addresses of images and corresponding labels"""
-        if self.usage == 'train' or self.usage == 'train':
 
-            img_dir_list = [
-                self.dataset_dir + '/train' + '/img' + '/' + seq_dir + '/' +
-                img_name for seq_dir in os.listdir(self.dataset_dir +
-                                                   '/train/' + '/img/')
-                for img_name in os.listdir(self.dataset_dir + '/train/' +
-                                           '/img/' + seq_dir)
-            ]
+        if self.usage == 'train':
+            main_folder = '/train'
 
-            cls_dir_list = [
-                self.dataset_dir + '/train' + '/cls' + '/' + seq_dir + '/' +
-                img_name for seq_dir in os.listdir(self.dataset_dir +
-                                                   '/train/' + '/cls/')
-                for img_name in os.listdir(self.dataset_dir + '/train/' +
-                                           '/cls/' + seq_dir)
-            ]
-
-            inst_dir_list = [
-                self.dataset_dir + '/train' + '/inst' + '/' + seq_dir + '/' +
-                img_name for seq_dir in os.listdir(self.dataset_dir +
-                                                   '/train/' + '/inst/')
-                for img_name in os.listdir(self.dataset_dir + '/train/' +
-                                           '/inst/' + seq_dir)
-            ]
+        elif self.usage == 'validation':
+            main_folder = '/val'
 
         else:
+            main_folder = '/test'
 
-            img_dir_list = [
-                self.dataset_dir + '/val' + '/img' + '/' + seq_dir + '/' +
-                img_name for seq_dir in os.listdir(self.dataset_dir +
-                                                   '/train/' + '/img/')
-                for img_name in os.listdir(self.dataset_dir + '/train/' +
-                                           '/img/' + seq_dir)
-            ]
+        img_dir_list = [
+            self.dataset_dir + main_folder + '/img' + '/' + seq_dir + '/' +
+            img_name
+            for seq_dir in os.listdir(self.dataset_dir + main_folder + '/img/')
+            for img_name in os.listdir(self.dataset_dir + main_folder +
+                                       '/img/' + seq_dir)
+        ]
 
-            cls_dir_list = [
-                self.dataset_dir + '/val' + '/cls' + '/' + seq_dir + '/' +
-                img_name for seq_dir in os.listdir(self.dataset_dir +
-                                                   '/train/' + '/cls/')
-                for img_name in os.listdir(self.dataset_dir + '/train/' +
-                                           '/cls/' + seq_dir)
-            ]
+        cls_dir_list = [
+            self.dataset_dir + main_folder + '/cls' + '/' + seq_dir + '/' +
+            img_name
+            for seq_dir in os.listdir(self.dataset_dir + main_folder + '/cls/')
+            for img_name in os.listdir(self.dataset_dir + main_folder +
+                                       '/cls/' + seq_dir)
+        ]
 
-            inst_dir_list = [
-                self.dataset_dir + '/val' + '/inst' + '/' + seq_dir + '/' +
-                img_name for seq_dir in os.listdir(self.dataset_dir +
-                                                   '/train/' + '/inst/')
-                for img_name in os.listdir(self.dataset_dir + '/train/' +
-                                           '/inst/' + seq_dir)
-            ]
+        inst_dir_list = [
+            self.dataset_dir + main_folder + '/inst' + '/' + seq_dir + '/' +
+            img_name for seq_dir in os.listdir(self.dataset_dir + main_folder +
+                                               '/inst/')
+            for img_name in os.listdir(self.dataset_dir + main_folder +
+                                       '/inst/' + seq_dir)
+        ]
 
         dataset = {
             'RGB': img_dir_list,
@@ -448,19 +430,19 @@ class MAPILLARY(DatasetGenerator):
 
         img_dir_list = [
             self.dataset_dir + main_folder + '/images' + '/' + img_name
-            for img_name in os.listdir(self.dataset_dir + '/training/' +
+            for img_name in os.listdir(self.dataset_dir + main_folder +
                                        '/images/')
         ]
 
         cls_dir_list = [
             self.dataset_dir + main_folder + '/labels' + '/' + img_name
-            for img_name in os.listdir(self.dataset_dir + '/training/' +
+            for img_name in os.listdir(self.dataset_dir + main_folder +
                                        '/labels/')
         ]
 
         inst_dir_list = [
             self.dataset_dir + main_folder + '/instances' + '/' + img_name
-            for img_name in os.listdir(self.dataset_dir + '/training/' +
+            for img_name in os.listdir(self.dataset_dir + main_folder +
                                        '/instances/')
         ]
 
