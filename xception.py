@@ -66,6 +66,7 @@ def xception_block(inputs,
                 filters=depth_list[i],
                 kernel_size=3,
                 strides=strides_list[i],
+                dilation_rate=dilation_rate_list[i],
                 weight_decay=1e-5,
                 batch_normalization=batch_normalization)
 
@@ -162,7 +163,7 @@ def xception_41(inputs, weight_decay=1e-5, batch_normalization=False, output_str
     if output_stride == 16:
         strides_list = [1, 1, 1]
         dilation_rate_list = [2, 2, 2]
-    elif output_stride == 16:
+    elif output_stride == 32:
         strides_list = [1, 1, 2]
         dilation_rate_list = [1, 1, 1]
     result = xception_block(inputs=result,

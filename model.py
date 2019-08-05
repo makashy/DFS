@@ -22,7 +22,7 @@ def deep_lab_v3(inputs, output_stride=16):
         inputs=inputs,
         weight_decay=weight_decay,
         batch_normalization=batch_normalization,
-        output_stride=16)
+        output_stride=output_stride)
     result = aspp.aspp(inputs=result,
                        weight_decay=weight_decay,
                        batch_normalization=batch_normalization,
