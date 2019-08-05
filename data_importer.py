@@ -68,9 +68,7 @@ class DatasetGenerator:
     """Abstract iterator for looping over elements of a dataset .
 
     Arguments:
-        ratio: ratio of the train-set size to the validation-set size and test-set size
-            The first number is for the train-set, the second is for validation-set and what
-            is remained is for test-set.(the sum of two numbers should equal to one or less)
+        usage_range: usage range of the dataset
         batch_size: Integer batch size.
         repeater: If true, the dataset generator starts generating samples from the beginning when
             it reaches the end of the dataset.
@@ -84,16 +82,16 @@ class DatasetGenerator:
     def __init__(self,
                  table_address,
                  usage='train',
-                 ratio=(1, 0),
+                 usage_range=(0, 1),
                  batch_size=1,
-                 repeater=False,
+                 repeater=True,
                  shuffle=True,
                  output_shape=None,
-                 data_type='float64',
-                 label_type=('segmentation', 'instance', 'depth'),
-                 dataset_name='SYNTHIA_SF'):
+                 data_type='float32',
+                 label_type=('segmentation'),
+                 dataset_name=None):
         self.usage = usage
-        self.ratio = ratio
+        self.usage_range = usage_range
         self.batch_size = batch_size
         self.repeater = repeater
         self.shuffle = shuffle
@@ -102,10 +100,9 @@ class DatasetGenerator:
         self.label_type = label_type
         self.dataset_name = dataset_name
         self.dataset = self.data_frame_creator()
-        self.size = self.dataset.shape[0] - 1
-        self.start_index = 0
-        self.end_index = np.int32(np.floor(self.ratio[TRAIN] * self.size))
-        self.dataset_usage(usage)
+        self.start_index = np.int32(np.floor(self.usage_range[0] * (self.dataset.shape[0] - 1)))
+        self.end_index = np.int32(np.floor(self.usage_range[1] * (self.dataset.shape[0] - 1)))
+        self.size = self.end_index - self.start_index
         self.index = self.start_index
         self.label_table = self.load_label_table(table_address)
 
@@ -113,30 +110,6 @@ class DatasetGenerator:
         """Pandas dataFrame for addresses of images and corresponding labels"""
 
         return pd.DataFrame()
-
-    def dataset_usage(self, usage):
-        """ Determines the current usage of the dataset:
-            - 'train'
-            - 'validation'
-            - 'test'
-        """
-        if usage is 'train':
-            self.start_index = 0
-            self.end_index = np.int32(np.floor(self.ratio[TRAIN] * self.size))
-        elif usage is 'validation':
-            self.start_index = np.int32(np.floor(self.ratio[TRAIN] *
-                                                 self.size))
-            self.end_index = np.int32(
-                np.floor(
-                    (self.ratio[TRAIN] + self.ratio[VALIDATION]) * self.size))
-        elif usage is 'test':
-            self.start_index = np.int32(
-                np.floor(
-                    (self.ratio[TRAIN] + self.ratio[VALIDATION]) * self.size))
-            self.end_index = self.size
-        else:
-            print('Invalid input for usage variable')
-            raise NameError('InvalidInput')
 
     def load_label_table(self, table_address):
         """ Creates a pandas data frame (from a CSV file) having information
