@@ -226,7 +226,7 @@ class DatasetGenerator:
         return features, segmentation
 
 
-class NewSynthiaSf(DatasetGenerator):
+class SynthiaSf(DatasetGenerator):
     """Iterator for looping over elements of SYNTHIA-SF backwards."""
 
     def __init__(self, dataset_dir, **kwargs):
@@ -278,7 +278,8 @@ class NewSynthiaSf(DatasetGenerator):
         }
 
         if self.shuffle:
-            return pd.DataFrame(dataset).sample(frac=1, random_state=123).reset_index(drop=True)
+            return pd.DataFrame(dataset).sample(
+                frac=1, random_state=123).reset_index(drop=True)
 
         return pd.DataFrame(dataset)
 
@@ -421,5 +422,128 @@ class VIPER(DatasetGenerator):
         }
 
         if self.shuffle:
-            return pd.DataFrame(dataset).sample(frac=1, random_state=123).reset_index(drop=True)
+            return pd.DataFrame(dataset).sample(
+                frac=1, random_state=123).reset_index(drop=True)
+        return pd.DataFrame(dataset)
+
+
+class MAPILLARY(DatasetGenerator):
+    """Iterator for looping over elements of a MAPILLARY dataset ."""
+
+    def __init__(self, dataset_dir, **kwargs):
+
+        self.dataset_dir = dataset_dir
+        super().__init__(dataset_name='MAPILLARY', **kwargs)
+
+    def data_frame_creator(self):
+        """Pandas dataFrame for addresses of images and corresponding labels"""
+        if self.usage == 'train':
+            main_folder = '/training'
+
+        elif self.usage == 'validation':
+            main_folder = '/validation'
+
+        else:
+            main_folder = '/testing'
+
+        img_dir_list = [
+            self.dataset_dir + main_folder + '/images' + '/' + img_name
+            for img_name in os.listdir(self.dataset_dir + '/training/' +
+                                       '/images/')
+        ]
+
+        cls_dir_list = [
+            self.dataset_dir + main_folder + '/labels' + '/' + img_name
+            for img_name in os.listdir(self.dataset_dir + '/training/' +
+                                       '/labels/')
+        ]
+
+        inst_dir_list = [
+            self.dataset_dir + main_folder + '/instances' + '/' + img_name
+            for img_name in os.listdir(self.dataset_dir + '/training/' +
+                                       '/instances/')
+        ]
+
+        dataset = {
+            'RGB': img_dir_list,
+            'SEGMENTATION': cls_dir_list,
+            'INSTANCE': inst_dir_list
+        }
+
+        if self.shuffle:
+            return pd.DataFrame(dataset).sample(
+                frac=1, random_state=123).reset_index(drop=True)
+        return pd.DataFrame(dataset)
+
+
+class CITYSCAPES(DatasetGenerator):
+    """Iterator for looping over elements of a CITYSCAPES dataset ."""
+
+    def __init__(self, dataset_dir, **kwargs):
+
+        self.dataset_dir = dataset_dir
+        super().__init__(dataset_name='CITYSCAPES', **kwargs)
+
+    def data_frame_creator(self):
+        """Pandas dataFrame for addresses of images and corresponding labels"""
+
+        if self.usage == 'train':
+            main_folder = '/train'
+
+        elif self.usage == 'validation':
+            main_folder = '/val'
+
+        else:
+            main_folder = '/test'
+
+        img_dir_list = [
+            self.dataset_dir + '/leftImg8bit_trainvaltest/leftImg8bit' +
+            main_folder + '/' + seq_dir + '/' + img_name
+            for seq_dir in os.listdir(self.dataset_dir +
+                                      '/leftImg8bit_trainvaltest/leftImg8bit' +
+                                      main_folder)
+            for img_name in os.listdir(
+                self.dataset_dir + '/leftImg8bit_trainvaltest/leftImg8bit' +
+                main_folder + '/' + seq_dir)
+        ]
+
+        def get_label(address, label_type):
+            raw_list = os.listdir(address)
+            final_list = list()
+            for _, element in enumerate(raw_list):
+                if label_type in element:
+                    final_list.append(element)
+            return final_list
+
+        cls_dir_list = [
+            self.dataset_dir + '/gtFine_trainvaltest/gtFine' + main_folder +
+            '/' + seq_dir + '/' + img_name
+            for seq_dir in os.listdir(self.dataset_dir +
+                                      '/gtFine_trainvaltest/gtFine' +
+                                      main_folder)
+            for img_name in get_label(
+                self.dataset_dir + '/gtFine_trainvaltest/gtFine' +
+                main_folder + '/' + seq_dir, "color")
+        ]
+
+        inst_dir_list = [
+            self.dataset_dir + '/gtFine_trainvaltest/gtFine' + main_folder +
+            '/' + seq_dir + '/' + img_name
+            for seq_dir in os.listdir(self.dataset_dir +
+                                      '/gtFine_trainvaltest/gtFine' +
+                                      main_folder)
+            for img_name in get_label(
+                self.dataset_dir + '/gtFine_trainvaltest/gtFine' +
+                main_folder + '/' + seq_dir, "instanceIds")
+        ]
+
+        dataset = {
+            'RGB': img_dir_list,
+            'SEGMENTATION': cls_dir_list,
+            'INSTANCE': inst_dir_list
+        }
+
+        if self.shuffle:
+            return pd.DataFrame(dataset).sample(
+                frac=1, random_state=123).reset_index(drop=True)
         return pd.DataFrame(dataset)
