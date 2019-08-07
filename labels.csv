@@ -1,4 +1,4 @@
-,name,macro_category,sub_category,MAPILLARY,VIPER,SYNTHIA,CITYSCAPES_LABELS
+,name,macro_category,sub_category,MAPILLARY,VIPER,SYNTHIA_SF,CITYSCAPES
 0,Bird,animal,-,"[165, 42, 42]",None,None,None
 1,Ground Animal,animal,-,"[0, 192, 0]",None,None,None
 2,Curb,construction,barrier,"[196, 196, 196]",None,None,None
