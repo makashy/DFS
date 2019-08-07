@@ -141,7 +141,7 @@ class DatasetGenerator:
         self.index = self.index + self.batch_size
 
         # loading features(images)
-        features = imread(self.dataset.RGB[0])[:, :, :3]
+        features = imread(self.dataset.RGB[0], plugin='matplotlib')[:, :, :3]
 
         if self.output_shape is None:
             output_shape = features.shape[:2]
@@ -154,7 +154,7 @@ class DatasetGenerator:
         # 3) [:, :, :3] -> to remove 4th channel in png
 
         features = np.array([
-            resize(src=imread(self.dataset.RGB[i])[:, :, :3],
+            resize(src=imread(self.dataset.RGB[i], plugin='matplotlib')[:, :, :3],
                    dsize=(output_shape[1], output_shape[0]))
             for i in range(self.index - self.batch_size, self.index)
         ])
@@ -168,7 +168,7 @@ class DatasetGenerator:
                 one_hot(self.label_table,
                         img_as_ubyte(
                             resize(src=imread(
-                                self.dataset.SEGMENTATION[i])[:, :, :3],
+                                self.dataset.SEGMENTATION[i], plugin='matplotlib')[:, :, :3],
                                    dsize=(output_shape[1], output_shape[0]))),
                         dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
@@ -179,7 +179,7 @@ class DatasetGenerator:
                 sparse(self.label_table,
                        img_as_ubyte(
                            resize(src=imread(
-                               self.dataset.SEGMENTATION[i])[:, :, :3],
+                               self.dataset.SEGMENTATION[i], plugin='matplotlib')[:, :, :3],
                                   dsize=(output_shape[1], output_shape[0]))),
                        dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
@@ -189,7 +189,7 @@ class DatasetGenerator:
         #     labels = np.array(
         #         np.array([
         #             resize(
-        #                 image=imread(self.dataset.iloc[i, 1]),
+        #                 image=imread(self.dataset.iloc[i, 1], plugin='matplotlib'),
         #                 output_shape=(480, 640))
         #             for i in range(self.index, self.index + self.batch_size)
         #         ]),
