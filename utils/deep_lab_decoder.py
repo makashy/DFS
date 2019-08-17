@@ -91,7 +91,7 @@ def get_logits(inputs,
                                      name='logits/final_upsample')(inputs)
 
     result = LAYERS.Conv2D(
-        filters=22,  # TODO: number of classes
+        filters=19,  # TODO: number of classes
         kernel_size=1,
         padding='same',
         kernel_regularizer=L2(weight_decay),

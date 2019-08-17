@@ -1,9 +1,9 @@
 """ Deeplabv3+ model"""
 
 import tensorflow as tf
-import xception
-import aspp
-import deep_lab_decoder
+from utils import xception
+from utils import aspp
+from utils import deep_lab_decoder
 
 MODEL = tf.keras.Model
 
