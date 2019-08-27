@@ -89,7 +89,8 @@ class DatasetGenerator:
                  output_shape=None,
                  data_type='float32',
                  label_type=('segmentation'),
-                 dataset_name=None):
+                 dataset_name=None,
+                 class_ids=COMMON_LABEL_IDS.copy()):
         self.usage = usage
         self.usage_range = usage_range
         self.batch_size = batch_size
@@ -99,6 +100,7 @@ class DatasetGenerator:
         self.data_type = data_type
         self.label_type = label_type
         self.dataset_name = dataset_name
+        self.class_ids = class_ids
         self.dataset = self.data_frame_creator()
         self.start_index = np.int32(np.floor(self.usage_range[0] * (self.dataset.shape[0] - 1)))
         self.end_index = np.int32(np.floor(self.usage_range[1] * (self.dataset.shape[0] - 1)))
@@ -170,6 +172,7 @@ class DatasetGenerator:
                             resize(src=imread(
                                 self.dataset.SEGMENTATION[i], plugin='matplotlib')[:, :, :3],
                                    dsize=(output_shape[1], output_shape[0]))),
+                        class_ids=self.class_ids,
                         dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
             ])
@@ -181,6 +184,7 @@ class DatasetGenerator:
                            resize(src=imread(
                                self.dataset.SEGMENTATION[i], plugin='matplotlib')[:, :, :3],
                                   dsize=(output_shape[1], output_shape[0]))),
+                       class_ids=self.class_ids,
                        dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
             ])
