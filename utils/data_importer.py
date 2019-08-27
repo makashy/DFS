@@ -38,7 +38,7 @@ def label_slicer(raw_label, class_color):
 
 def one_hot(label_table,
             raw_label,
-            class_ids=COMMON_LABEL_IDS,
+            class_ids=COMMON_LABEL_IDS.copy(),
             dataset_name='SYNTHIA_SF'):
     """ Creates a one-hot label for a group of segmentation classes from the given raw label """
     one_hot_label = np.ndarray(shape=(raw_label.shape[0], raw_label.shape[1],
@@ -52,7 +52,7 @@ def one_hot(label_table,
 
 def sparse(label_table,
            raw_label,
-           class_ids=COMMON_LABEL_IDS,
+           class_ids=COMMON_LABEL_IDS.copy(),
            dataset_name='SYNTHIA_SF'):
     """ Creates a sparse label for a group of segmentation classes from the given raw label """
     label = np.zeros(shape=(raw_label.shape[0], raw_label.shape[1], 1),
