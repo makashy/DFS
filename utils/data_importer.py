@@ -10,6 +10,7 @@ import tables
 from numba import jit
 from skimage import img_as_float32, img_as_ubyte
 from skimage.io import imread
+from tensorflow.python.keras.utils.data_utils import Sequence
 
 # from skimage.transform import resize
 from cv2 import resize
@@ -64,7 +65,7 @@ def sparse(label_table,
     return label
 
 
-class DatasetGenerator:
+class DatasetGenerator(Sequence):
     """Abstract iterator for looping over elements of a dataset .
 
     Arguments:
@@ -130,6 +131,13 @@ class DatasetGenerator:
         return self
 
     def __next__(self):
+        return self.next()
+
+    def __len__(self):
+        # return math.ceil(self.dsg.size / self.batch_size)
+        return np.int(np.ceil(self.size / self.batch_size))
+
+    def __getitem__(self, idx):
         return self.next()
 
     def next(self):
