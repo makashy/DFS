@@ -10,10 +10,10 @@ import tables
 from numba import jit
 from skimage import img_as_float32, img_as_ubyte
 from skimage.io import imread
-from tensorflow.python.keras.utils.data_utils import Sequence
+from tensorflow.python.keras.utils.data_utils import Sequence #pylint: disable=no-name-in-module
 
 # from skimage.transform import resize
-from cv2 import resize
+from cv2 import resize #pylint: disable=no-name-in-module
 
 COMMON_LABEL_IDS = [
     3, 13, 15, 17, 19, 20, 27, 29, 30, 45, 48, 50, 52, 54, 55, 57, 58, 61, 65
