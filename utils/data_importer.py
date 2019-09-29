@@ -306,7 +306,7 @@ class NYU:
         features = np.array(self.file.root.images[self.index:self.index +
                                                   self.batch_size])
         features = np.transpose(features, [0, 3, 2, 1])
-        features = np.array(features / 255., dtype=np.float16)
+        features = np.array(features / 255., dtype=np.float32)
 
         if self.label_type == 'depth':
             label_set = self.file.root.depths
@@ -331,7 +331,7 @@ class NYU:
                         if labels[i, j, k] < 21:
                             new_segmentation[i, j, k, int(labels[i, j, k])] = 1
             labels = new_segmentation
-            labels = np.array(labels, dtype=np.float16)
+            labels = np.array(labels, dtype=np.float32)
         else:
             raise ValueError('invalid label type')
 
