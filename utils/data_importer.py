@@ -89,7 +89,8 @@ class DatasetGenerator(Sequence):
                  shuffle=True,
                  output_shape=None,
                  data_type='float32',
-                 label_type=('segmentation'),
+                 feature_types=['image'],
+                 label_types=['segmentation'],
                  dataset_name=None,
                  class_ids=COMMON_LABEL_IDS.copy()):
         self.usage = usage
@@ -99,7 +100,8 @@ class DatasetGenerator(Sequence):
         self.shuffle = shuffle
         self.output_shape = output_shape
         self.data_type = data_type
-        self.label_type = label_type
+        self.feature_types = feature_types
+        self.label_types = label_types
         self.dataset_name = dataset_name
         self.class_ids = class_ids
         self.dataset = self.data_frame_creator()
@@ -108,6 +110,13 @@ class DatasetGenerator(Sequence):
         self.size = self.end_index - self.start_index
         self.index = self.start_index
         self.label_table = self.load_label_table(table_address)
+
+        if not isinstance(self.feature_types, list):
+            raise NameError('feature_types should be a list')
+        if not isinstance(self.label_types, list):
+            raise NameError('label_types should be a list')
+        diff = set(feature_types) - set(label_types)
+        self.data_list = label_types + list(diff)
 
     def data_frame_creator(self):
         """Pandas dataFrame for addresses of images and corresponding labels"""
@@ -150,30 +159,27 @@ class DatasetGenerator(Sequence):
                 self.index = self.start_index
         self.index = self.index + self.batch_size
 
-        # loading features(images)
-        features = imread(self.dataset.RGB[0], plugin='matplotlib')[:, :, :3]
+        data_dict = dict()
+        if 'image' in self.data_list:
 
-        if self.output_shape is None:
-            output_shape = features.shape[:2]
-        else:
-            output_shape = self.output_shape
+            image = imread(self.dataset.RGB[0], plugin='matplotlib')[:, :, :3]
 
-        # 1) Resize image to match a certain size.
-        # 2) Also the input image is converted (from 8-bit integer)
-        # to 64-bit floating point(->preserve_range=False).
-        # 3) [:, :, :3] -> to remove 4th channel in png
+            if self.output_shape is None:
+                output_shape = image.shape[:2]
+            else:
+                output_shape = self.output_shape
 
-        features = np.array([
-            resize(src=imread(self.dataset.RGB[i], plugin='matplotlib')[:, :, :3],
-                   dsize=(output_shape[1], output_shape[0]))
-            for i in range(self.index - self.batch_size, self.index)
-        ])
+            image = np.array([
+                resize(src=imread(self.dataset.RGB[i], plugin='matplotlib')[:, :, :3],
+                       dsize=(output_shape[1], output_shape[0]))
+                for i in range(self.index - self.batch_size, self.index)
+            ])
 
-        if self.data_type is 'float32':
-            features = img_as_float32(features)
+            if self.data_type is 'float32':
+                image = img_as_float32(image)
+            data_dict['image'] = image
 
-        # loading labels(segmentation)
-        if self.label_type == 'segmentation':
+        if 'segmentation' in self.data_list:
             segmentation = np.array([
                 one_hot(self.label_table,
                         img_as_ubyte(
@@ -184,9 +190,10 @@ class DatasetGenerator(Sequence):
                         dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
             ])
+            data_dict['segmentation'] = segmentation
 
-        if self.label_type == 'sparse_segmentation':
-            segmentation = np.array([
+        if 'sparse_segmentation' in self.data_list:
+            sparse_segmentation = np.array([
                 sparse(self.label_table,
                        img_as_ubyte(
                            resize(src=imread(
@@ -196,19 +203,33 @@ class DatasetGenerator(Sequence):
                        dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
             ])
+            data_dict['sparse_segmentation'] = sparse_segmentation
 
-        # if self.label_type == 'depth':
-        #     labels = np.array(
-        #         np.array([
-        #             resize(
-        #                 image=imread(self.dataset.iloc[i, 1], plugin='matplotlib'),
-        #                 output_shape=(480, 640))
-        #             for i in range(self.index, self.index + self.batch_size)
-        #         ]),
-        #         dtype=np.int32)
-        #     labels = (labels[:, :, :, 0] + labels[:, :, :, 1] * 256 +
-        #               labels[:, :, :, 2] * 256 * 256) / ((256 * 256 * 256) - 1)
-        return features, segmentation
+        if 'depth' in self.data_list:
+            depth = np.array([
+                resize(src=imread(self.dataset.DEPTH[i],
+                                  plugin='pil'),
+                       dsize=(output_shape[1], output_shape[0]))
+                for i in range(self.index - self.batch_size, self.index)
+            ])
+
+            # TODO: general case?
+            depth = np.array(
+                (depth[:, :, :, 0] + depth[:, :, :, 1] * 256.0 +
+                 depth[:, :, :, 2] * 256 * 256.0) / ((256 * 256 * 256) - 1),
+                dtype=np.float32)
+            depth = np.expand_dims(depth, -1)
+
+            data_dict['depth'] = depth
+
+        feature_list = []
+        for feature in self.feature_types:
+            feature_list.append(data_dict[feature])
+        label_list = []
+        for label in self.label_types:
+            label_list.append(data_dict[label])
+
+        return feature_list, label_list
 
 
 class SynthiaSf(DatasetGenerator):
