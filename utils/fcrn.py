@@ -75,7 +75,8 @@ def interleave(tensors, axis):
     old_shape = get_incoming_shape(tensors[0])[1:]
     new_shape = [-1] + old_shape
     new_shape[axis] *= len(tensors)
-    return tf.reshape(tf.stack(tensors, axis + 1), new_shape)
+    return tf.keras.backend.reshape(tf.keras.backend.stack(tensors, axis + 1),
+                                    new_shape)
 
 
 def unpool_as_conv(input_tensor, output_filter, activation, name):
@@ -139,7 +140,7 @@ def up_project(input_tensor, output_filter, block_name):
                                   activation=False,
                                   name='result_2')
 
-        result = tf.add_n([result_1, result_2])
+        result = tf.keras.layers.add([result_1, result_2])
         result = Activation(ACTIVATION)(result)
 
     return result
