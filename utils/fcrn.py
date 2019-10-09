@@ -7,9 +7,9 @@ from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
 from tensorflow.keras.layers import (  # pylint: disable=import-error
-    Activation, BatchNormalization, Conv2D, Input, MaxPool2D)
+    Activation, BatchNormalization, Conv2D, Input, MaxPool2D, Concatenate)
 
-ACTIVATION = 'selu'
+ACTIVATION = 'relu'  #'selu'
 
 
 def baseline(input_tensor, input_filter, output_filter, block_name):
@@ -37,22 +37,22 @@ def baseline(input_tensor, input_filter, output_filter, block_name):
 def bottleneck(input_tensor, input_filter, output_filter, strides, block_name):
     "Bottleneck block"
     with tf.name_scope(block_name):
-        result = Conv2D(filters=input_filter,
-                        kernel_size=1,
-                        strides=strides)(input_tensor)# padding='same'
+        result = Conv2D(filters=input_filter, kernel_size=1,
+                        strides=strides)(input_tensor)  # padding='same'
         result = BatchNormalization()(result)
         result = Activation(ACTIVATION)(result)
 
         projection = Conv2D(filters=output_filter,
                             kernel_size=1,
-                            strides=strides)(input_tensor)# padding='same'
+                            strides=strides)(input_tensor)  # padding='same'
 
         result = Conv2D(filters=input_filter, kernel_size=3,
                         padding='same')(result)
         result = BatchNormalization()(result)
         result = Activation(ACTIVATION)(result)
 
-        result = Conv2D(filters=output_filter, kernel_size=1)(result)#padding='same'
+        result = Conv2D(filters=output_filter,
+                        kernel_size=1)(result)  #padding='same'
         result = BatchNormalization()(result)
         result = tf.keras.layers.add([result, projection])
         result = Activation(ACTIVATION)(result)
@@ -149,32 +149,6 @@ def up_project(input_tensor, output_filter, block_name):
 def model(img_shape=(480, 640, 3)):
     """FCRN model"""
 
-    # #         self.features = tf.Variable(file.root.images[self.index:self.index+self.batch_size], tf.float32)
-    # #         self.features = tf.transpose(self.features,perm=[0,3,2,1])
-    # features = tf.to_float(features)
-    # features = tf.div(features, 255.0)
-    # #TODO: delete
-    # features = tf.image.resize_images(features, [228, 304])
-
-    # #         self.labels = tf.Variable(file.root.depths[self.index:self.index+self.batch_size], tf.float32)
-    # #         self.labels = tf.transpose(self.labels,perm=[0,2,1])
-    # labels = tf.reshape(labels, labels.get_shape().as_list() + [1])
-    # #TODO: delete
-    # labels = tf.image.resize_images(labels, [128, 160])
-
-    ##         plt.figure(figsize=(10, 15))
-    ##         for i in range(self.batch_size):
-    ##             plt.subplot(batch_size,2,2*i+1)
-    ##             plt.imshow(np.transpose(file.root.depths[i+self.index],[1,0]))
-    ##             plt.subplot(batch_size,2,2*i+2)
-    ##             plt.imshow(np.transpose(file.root.images[i+self.index],[2,1,0]))
-    ## Input Layer
-    ## Reshape X to 4-D tensor: [batch_size, width, height, channels]
-    ## SYNTHIA-SF images are 1920x1080 pixels, and have three color channel
-
-    ##     input_layer = tf.reshape(features["x"], [-1, 1920, 1080, 3])
-
-    # input_layer = tf.reshape(features, [-1, 228, 304, 3], name='Input')
     inputs = Input(shape=img_shape)
 
     result = Conv2D(filters=64, kernel_size=7, strides=2,
@@ -294,3 +268,131 @@ def model(img_shape=(480, 640, 3)):
                      name='Prediction')(result)
 
     return tf.keras.models.Model(inputs=inputs, outputs=outputs, name='FCRN')
+
+
+def model_rgb_seg(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
+    """FCRN model"""
+
+    inputs_rgb = Input(shape=rgb_shape)
+    inputs_seg = Input(shape=seg_shape)
+
+    result = Concatenate()([inputs_rgb, inputs_seg])
+    result = Conv2D(filters=64, kernel_size=7, strides=2,
+                    padding='same')(result)
+    result = BatchNormalization()(result)
+    result = MaxPool2D(pool_size=3, strides=2, padding='same')(result)
+    result = Activation(ACTIVATION)(result)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=64,
+                        output_filter=256,
+                        strides=1,
+                        block_name='bottleneck')
+
+    result = baseline(input_tensor=result,
+                      input_filter=64,
+                      output_filter=256,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=64,
+                      output_filter=256,
+                      block_name='baseline')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=128,
+                        output_filter=512,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=256,
+                        output_filter=1024,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=512,
+                        output_filter=2048,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = baseline(input_tensor=result,
+                      input_filter=512,
+                      output_filter=2048,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=512,
+                      output_filter=2048,
+                      block_name='baseline')
+
+    result = Conv2D(filters=1024, kernel_size=1, strides=1)(result)
+    result = BatchNormalization()(result)
+
+    result = up_project(input_tensor=result,
+                        output_filter=512,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=256,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=128,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=64,
+                        block_name='up_project')
+
+    ####TODO: remove? (not present in the paper)
+    result = up_project(input_tensor=result,
+                        output_filter=32,
+                        block_name='up_project_additional')
+    ###
+
+    #         result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
+    outputs = Conv2D(filters=1, kernel_size=1, strides=1,
+                     name='Prediction')(result)
+
+    return tf.keras.models.Model(inputs=[inputs_rgb, inputs_seg],
+                                 outputs=outputs,
+                                 name='FCRN')
