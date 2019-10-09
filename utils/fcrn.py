@@ -78,35 +78,44 @@ def interleave(tensors, axis):
     return tf.reshape(tf.stack(tensors, axis + 1), new_shape)
 
 
-def unpool_as_conv(input_tensor, output_filter, activation):
+def unpool_as_conv(input_tensor, output_filter, activation, name):
     "Figure 3 in paper[1]↑"
-    result_A = Conv2D(filters=output_filter,
-                      kernel_size=(3, 3),
-                      strides=1,
-                      padding='SAME')(input_tensor)
-    result_B = Conv2D(filters=output_filter,
-                      kernel_size=(2, 3),
-                      strides=1,
-                      padding='SAME')(input_tensor)
-    result_C = Conv2D(filters=output_filter,
-                      kernel_size=(3, 2),
-                      strides=1,
-                      padding='SAME')(input_tensor)
-    result_D = Conv2D(filters=output_filter,
-                      kernel_size=(2, 2),
-                      strides=1,
-                      padding='SAME')(input_tensor)
+    with tf.name_scope(name):
+        result_A = Conv2D(
+            filters=output_filter,
+            kernel_size=(3, 3),
+            strides=1,
+            padding='SAME',
+            name=tf.name_scope('result_A').__enter__())(input_tensor)
+        result_B = Conv2D(
+            filters=output_filter,
+            kernel_size=(2, 3),
+            strides=1,
+            padding='SAME',
+            name=tf.name_scope('result_B').__enter__())(input_tensor)
+        result_C = Conv2D(
+            filters=output_filter,
+            kernel_size=(3, 2),
+            strides=1,
+            padding='SAME',
+            name=tf.name_scope('result_C').__enter__())(input_tensor)
+        result_D = Conv2D(
+            filters=output_filter,
+            kernel_size=(2, 2),
+            strides=1,
+            padding='SAME',
+            name=tf.name_scope('result_D').__enter__())(input_tensor)
 
-    # Interleaving elements of the four feature maps
-    # --------------------------------------------------
-    left = interleave([result_A, result_B], axis=1)  # columns
-    right = interleave([result_C, result_D], axis=1)  # columns
-    result = interleave([left, right], axis=2)  # rows
+        # Interleaving elements of the four feature maps
+        # --------------------------------------------------
+        left = interleave([result_A, result_B], axis=1)  # columns
+        right = interleave([result_C, result_D], axis=1)  # columns
+        result = interleave([left, right], axis=2)  # rows
 
-    result = BatchNormalization()(result)
+        result = BatchNormalization()(result)
 
-    if activation:
-        result = Activation(ACTIVATION)(result)
+        if activation:
+            result = Activation(ACTIVATION)(result)
 
     return result
 
@@ -116,7 +125,8 @@ def up_project(input_tensor, output_filter, block_name):
     with tf.name_scope(block_name):
         result_1 = unpool_as_conv(input_tensor=input_tensor,
                                   output_filter=output_filter,
-                                  activation=True)
+                                  activation=True,
+                                  name='result_1')
 
         result_1 = Conv2D(filters=output_filter,
                           kernel_size=3,
@@ -126,7 +136,8 @@ def up_project(input_tensor, output_filter, block_name):
 
         result_2 = unpool_as_conv(input_tensor=input_tensor,
                                   output_filter=output_filter,
-                                  activation=False)
+                                  activation=False,
+                                  name='result_2')
 
         result = tf.add_n([result_1, result_2])
         result = Activation(ACTIVATION)(result)
@@ -175,106 +186,106 @@ def model(img_shape=(480, 640, 3)):
                         input_filter=64,
                         output_filter=256,
                         strides=1,
-                        block_name='block')
+                        block_name='bottleneck')
 
     result = baseline(input_tensor=result,
                       input_filter=64,
                       output_filter=256,
-                      block_name='block')
+                      block_name='baseline')
 
     result = baseline(input_tensor=result,
                       input_filter=64,
                       output_filter=256,
-                      block_name='block')
+                      block_name='baseline')
 
     result = bottleneck(input_tensor=result,
                         input_filter=128,
                         output_filter=512,
                         strides=2,
-                        block_name='block')
+                        block_name='bottleneck')
 
     result = baseline(input_tensor=result,
                       input_filter=128,
                       output_filter=512,
-                      block_name='block')
+                      block_name='baseline')
 
     result = baseline(input_tensor=result,
                       input_filter=128,
                       output_filter=512,
-                      block_name='block')
+                      block_name='baseline')
 
     result = baseline(input_tensor=result,
                       input_filter=128,
                       output_filter=512,
-                      block_name='block')
+                      block_name='baseline')
 
     result = bottleneck(input_tensor=result,
                         input_filter=256,
                         output_filter=1024,
                         strides=2,
-                        block_name='block')
+                        block_name='bottleneck')
 
     result = baseline(input_tensor=result,
                       input_filter=256,
                       output_filter=1024,
-                      block_name='block')
+                      block_name='baseline')
 
     result = baseline(input_tensor=result,
                       input_filter=256,
                       output_filter=1024,
-                      block_name='block')
+                      block_name='baseline')
 
     result = baseline(input_tensor=result,
                       input_filter=256,
                       output_filter=1024,
-                      block_name='block')
+                      block_name='baseline')
 
     result = baseline(input_tensor=result,
                       input_filter=256,
                       output_filter=1024,
-                      block_name='block')
+                      block_name='baseline')
 
     result = baseline(input_tensor=result,
                       input_filter=256,
                       output_filter=1024,
-                      block_name='block')
+                      block_name='baseline')
 
     result = bottleneck(input_tensor=result,
                         input_filter=512,
                         output_filter=2048,
                         strides=2,
-                        block_name='block')
+                        block_name='bottleneck')
 
     result = baseline(input_tensor=result,
                       input_filter=512,
                       output_filter=2048,
-                      block_name='block')
+                      block_name='baseline')
 
     result = baseline(input_tensor=result,
                       input_filter=512,
                       output_filter=2048,
-                      block_name='block')
+                      block_name='baseline')
 
     result = Conv2D(filters=1024, kernel_size=1, strides=1)(result)
     result = BatchNormalization()(result)
 
     result = up_project(input_tensor=result,
                         output_filter=512,
-                        block_name='block')
+                        block_name='up_project')
     result = up_project(input_tensor=result,
                         output_filter=256,
-                        block_name='block')
+                        block_name='up_project')
     result = up_project(input_tensor=result,
                         output_filter=128,
-                        block_name='block')
+                        block_name='up_project')
     result = up_project(input_tensor=result,
                         output_filter=64,
-                        block_name='block')
+                        block_name='up_project')
 
     ####TODO: remove? (not present in the paper)
-    # result = up_project(input_tensor=result,
-    #                     output_filter=32,
-    #                     block_name='block')
+    result = up_project(input_tensor=result,
+                        output_filter=32,
+                        block_name='up_project_additional')
     ###
 
     #         result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
