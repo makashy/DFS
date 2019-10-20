@@ -5,44 +5,44 @@ import numpy as np
 import open3d as o3d
 
 
-def one_hot2sparse(one_hot):
-    ''' Convers an one_hot label to a sparse label
-    '''
-    sparse = np.ndarray(shape=one_hot.shape[0:2])
-    for i in range(one_hot.shape[0]):
-        for j in range(one_hot.shape[1]):
-            sparse[i, j] = one_hot[i, j].argmax()
-    return sparse
-
-
-def draw(array, array_type):
+def draw(array, title, class_name, class_index):
     ''' Draws different array types differently
     '''
-    if array_type == 'image':
+    if title == 'image':
         plt.imshow(array)
-    if array_type == 'sparse_segmentation':
+        plt.title(title)
+    if title == 'sparse_segmentation':
         plt.imshow(array)
-    if array_type == 'segmentation':
-        plt.imshow(one_hot2sparse(array))
-        plt.set_cmap('prism')
-    if array_type == 'depth':
+        plt.title(title)
+    if title == 'segmentation':
+        plt.imshow(array[:, :, class_index])
+        plt.title(title + ": " + class_name)
+    if title == 'depth':
         plt.imshow(array[:, :, 0])
+        plt.title(title)
+    if title == 'semantic_depth':
+        plt.imshow(array[:, :, class_index])
+        plt.title(title + ": " + class_name)
 
 
-def draw_samples(feature_list, label_list, index, feature_types, label_types):
+def draw_samples(feature_list,
+                 label_list,
+                 sample_num,
+                 feature_types,
+                 label_types,
+                 class_name='None',
+                 class_index=None):
     ''' Draws features and labels of a sample in separate rows
     '''
     n_columns = max(len(feature_types), len(label_types))
     plt.figure(figsize=(n_columns * 5, 8))
     for i, title in enumerate(feature_types):
         plt.subplot(2, n_columns, i + 1)
-        draw(feature_list[i][index], title)
-        plt.title(title)
+        draw(feature_list[i][sample_num], title, class_name, class_index)
 
     for i, title in enumerate(label_types):
         plt.subplot(2, n_columns, n_columns + i + 1)
-        draw(label_list[i][index], title)
-        plt.title(title)
+        draw(label_list[i][sample_num], title, class_name, class_index)
 
 
 def draw_point_cloud(depth, image):
