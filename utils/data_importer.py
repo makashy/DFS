@@ -10,10 +10,10 @@ import tables
 from numba import jit
 from skimage import img_as_float32, img_as_ubyte
 from skimage.io import imread
-from tensorflow.python.keras.utils.data_utils import Sequence #pylint: disable=no-name-in-module
+from tensorflow.python.keras.utils.data_utils import Sequence  #pylint: disable=no-name-in-module
 
 # from skimage.transform import resize
-from cv2 import resize #pylint: disable=no-name-in-module
+from cv2 import resize  #pylint: disable=no-name-in-module
 
 COMMON_LABEL_IDS = [
     3, 13, 15, 17, 19, 20, 27, 29, 30, 45, 48, 50, 52, 54, 55, 57, 58, 61, 65
@@ -79,7 +79,6 @@ class DatasetGenerator(Sequence):
         data_type: data type of features.
         label_type: Types of labels to be returned.
     """
-
     def __init__(self,
                  table_address,
                  usage='train',
@@ -103,13 +102,16 @@ class DatasetGenerator(Sequence):
         self.feature_types = feature_types
         self.label_types = label_types
         self.dataset_name = dataset_name
-        self.class_ids = class_ids
         self.dataset = self.data_frame_creator()
-        self.start_index = np.int32(np.floor(self.usage_range[0] * (self.dataset.shape[0] - 1)))
-        self.end_index = np.int32(np.floor(self.usage_range[1] * (self.dataset.shape[0] - 1)))
+        self.start_index = np.int32(
+            np.floor(self.usage_range[0] * (self.dataset.shape[0] - 1)))
+        self.end_index = np.int32(
+            np.floor(self.usage_range[1] * (self.dataset.shape[0] - 1)))
         self.size = self.end_index - self.start_index
         self.index = self.start_index
         self.label_table = self.load_label_table(table_address)
+        self.class_ids = self.available_classes(
+        ) if class_ids is 'all' else class_ids
 
         if not isinstance(self.feature_types, list):
             raise NameError('feature_types should be a list')
@@ -135,6 +137,12 @@ class DatasetGenerator(Sequence):
                                                   dtype=np.uint8,
                                                   sep=',')
         return label_table
+
+    def available_classes(self):
+        """Returns indexes of available classes in the dataset
+        """
+        return self.label_table[self.dataset_name].index[(
+            self.label_table[self.dataset_name] != 'None').tolist()]
 
     def __iter__(self):
         return self
@@ -170,7 +178,8 @@ class DatasetGenerator(Sequence):
                 output_shape = self.output_shape
 
             image = np.array([
-                resize(src=imread(self.dataset.RGB[i], plugin='matplotlib')[:, :, :3],
+                resize(src=imread(self.dataset.RGB[i],
+                                  plugin='matplotlib')[:, :, :3],
                        dsize=(output_shape[1], output_shape[0]))
                 for i in range(self.index - self.batch_size, self.index)
             ])
@@ -183,8 +192,8 @@ class DatasetGenerator(Sequence):
             segmentation = np.array([
                 one_hot(self.label_table,
                         img_as_ubyte(
-                            resize(src=imread(
-                                self.dataset.SEGMENTATION[i], plugin='matplotlib')[:, :, :3],
+                            resize(src=imread(self.dataset.SEGMENTATION[i],
+                                              plugin='matplotlib')[:, :, :3],
                                    dsize=(output_shape[1], output_shape[0]))),
                         class_ids=self.class_ids,
                         dataset_name=self.dataset_name)
@@ -196,8 +205,8 @@ class DatasetGenerator(Sequence):
             sparse_segmentation = np.array([
                 sparse(self.label_table,
                        img_as_ubyte(
-                           resize(src=imread(
-                               self.dataset.SEGMENTATION[i], plugin='matplotlib')[:, :, :3],
+                           resize(src=imread(self.dataset.SEGMENTATION[i],
+                                             plugin='matplotlib')[:, :, :3],
                                   dsize=(output_shape[1], output_shape[0]))),
                        class_ids=self.class_ids,
                        dataset_name=self.dataset_name)
@@ -207,8 +216,7 @@ class DatasetGenerator(Sequence):
 
         if 'depth' in self.data_list:
             depth = np.array([
-                resize(src=imread(self.dataset.DEPTH[i],
-                                  plugin='pil'),
+                resize(src=imread(self.dataset.DEPTH[i], plugin='pil'),
                        dsize=(output_shape[1], output_shape[0]))
                 for i in range(self.index - self.batch_size, self.index)
             ])
@@ -217,24 +225,64 @@ class DatasetGenerator(Sequence):
             depth = np.array(
                 (depth[:, :, :, 0] + depth[:, :, :, 1] * 256.0 +
                  depth[:, :, :, 2] * 256 * 256.0) / ((256 * 256 * 256) - 1),
-                dtype=np.float32)
+                dtype=np.float32) * 1000
             depth = np.expand_dims(depth, -1)
 
             data_dict['depth'] = depth
+
+        if 'semantic_depth' in self.data_list:
+
+            try:
+                depth
+            except NameError:
+                depth = np.array([
+                    resize(src=imread(self.dataset.DEPTH[i], plugin='pil'),
+                           dsize=(output_shape[1], output_shape[0]))
+                    for i in range(self.index - self.batch_size, self.index)
+                ])
+
+                # TODO: general case?
+                depth = np.array(
+                    (depth[:, :, :, 0] + depth[:, :, :, 1] * 256.0 +
+                     depth[:, :, :, 2] * 256 * 256.0) /
+                    ((256 * 256 * 256) - 1),
+                    dtype=np.float32) * 1000
+                depth = np.expand_dims(depth, -1)
+
+            semantic_depth = np.array([
+                one_hot(self.label_table,
+                        img_as_ubyte(
+                            resize(src=imread(self.dataset.SEGMENTATION[i],
+                                              plugin='matplotlib')[:, :, :3],
+                                   dsize=(output_shape[1], output_shape[0]))),
+                        class_ids=self.class_ids,
+                        dataset_name=self.dataset_name)
+                for i in range(self.index - self.batch_size, self.index)
+            ])
+            semantic_depth_array = segmentation * depth
+            # semantic_depth_array = np.rollaxis(semantic_depth_array, -1, 0)
+            # semantic_depth = []
+            # for array in semantic_depth_array:
+            #     semantic_depth.append(np.expand_dims(array, -1))
+            semantic_depth = semantic_depth_array
+
+            data_dict['semantic_depth'] = semantic_depth
 
         feature_list = []
         for feature in self.feature_types:
             feature_list.append(data_dict[feature])
         label_list = []
         for label in self.label_types:
-            label_list.append(data_dict[label])
+            if isinstance(data_dict[label], list):
+                label_list.extend(data_dict[label])
+            else:
+                label_list.append(data_dict[label])
 
         return feature_list, label_list
 
 
 class SynthiaSf(DatasetGenerator):
     """Iterator for looping over elements of SYNTHIA-SF backwards."""
-
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
@@ -292,7 +340,6 @@ class SynthiaSf(DatasetGenerator):
 
 class NYU:
     """Iterator for looping over elements of NYU Depth Dataset V2 backwards."""
-
     def __init__(self,
                  NYU_Depth_Dataset_V2_address,
                  batch_size=1,
@@ -361,7 +408,6 @@ class NYU:
 
 class VIPER(DatasetGenerator):
     """Iterator for looping over elements of a VIPER(PlayForBenchmark) dataset ."""
-
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
@@ -417,7 +463,6 @@ class VIPER(DatasetGenerator):
 
 class MAPILLARY(DatasetGenerator):
     """Iterator for looping over elements of a MAPILLARY dataset ."""
-
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
@@ -466,7 +511,6 @@ class MAPILLARY(DatasetGenerator):
 
 class CITYSCAPES(DatasetGenerator):
     """Iterator for looping over elements of a CITYSCAPES dataset ."""
-
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
