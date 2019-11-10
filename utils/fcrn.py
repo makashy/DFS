@@ -7,7 +7,8 @@ from __future__ import absolute_import, division, print_function
 
 import tensorflow as tf
 from tensorflow.keras.layers import (  # pylint: disable=import-error
-    Activation, BatchNormalization, Conv2D, Input, MaxPool2D, Concatenate)
+    Activation, BatchNormalization, Conv2D, Input, MaxPool2D, Concatenate,
+    Multiply, Add)
 
 ACTIVATION = 'relu'  #'selu'
 
@@ -87,25 +88,25 @@ def unpool_as_conv(input_tensor, output_filter, activation, name):
             kernel_size=(3, 3),
             strides=1,
             padding='SAME',
-            name=tf.name_scope('result_A').__enter__())(input_tensor)
+            name=tf.compat.v1.get_default_graph().unique_name('result_A'))(input_tensor)
         result_B = Conv2D(
             filters=output_filter,
             kernel_size=(2, 3),
             strides=1,
             padding='SAME',
-            name=tf.name_scope('result_B').__enter__())(input_tensor)
+            name=tf.compat.v1.get_default_graph().unique_name('result_B'))(input_tensor)
         result_C = Conv2D(
             filters=output_filter,
             kernel_size=(3, 2),
             strides=1,
             padding='SAME',
-            name=tf.name_scope('result_C').__enter__())(input_tensor)
+            name=tf.compat.v1.get_default_graph().unique_name('result_C'))(input_tensor)
         result_D = Conv2D(
             filters=output_filter,
             kernel_size=(2, 2),
             strides=1,
             padding='SAME',
-            name=tf.name_scope('result_D').__enter__())(input_tensor)
+            name=tf.compat.v1.get_default_graph().unique_name('result_D'))(input_tensor)
 
         # Interleaving elements of the four feature maps
         # --------------------------------------------------
