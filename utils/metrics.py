@@ -2,6 +2,7 @@
 import numpy as np
 from numba import jit
 import tensorflow as tf
+import cupy as cp
 
 
 def mean_IOU(y_true, y_pred):
@@ -173,7 +174,7 @@ def delta_threshold_cupy(y_true, y_pred, smooth=1e-6, i=1):
                    (smooth + y_t)) < 1.25**i) / y_t.size
 
 
-def SILog_cupy(y_true, y_pred):
+def SILog_cupy(y_true, y_pred, smooth=1e-6):
     """Computes  Scale invariant logarithmic error metric in between y_true and y_pred.
     """
     y_t = cp.array(y_true)
