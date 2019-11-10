@@ -94,6 +94,7 @@ def bce_dice_loss_nb(y_true, y_pred):
     tf.keras.losses.categorical_crossentropy(y_true, y_pred)
     return loss
 
+
 ############################################################tensorflow : IOU class
 class classIOU:
     def __init__(self, name, index):
@@ -106,9 +107,11 @@ class classIOU:
         y_true_f = tf.reshape(y_true[:, :, :, self.index], [-1])
         y_pred_f = tf.reshape(y_pred[:, :, :, self.index], [-1])
         intersection = tf.reduce_sum(y_true_f * y_pred_f)
-        score = (intersection + smooth) / (tf.reduce_sum(y_true_f) +
-                                           tf.reduce_sum(y_pred_f) - intersection + smooth)
+        score = (intersection +
+                 smooth) / (tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f) -
+                            intersection + smooth)
         return score
+
 
 def class_IOU_list(class_list):
     IOU_list = []
@@ -148,7 +151,8 @@ def RMSElog_cupy(y_true, y_pred, smooth=1e-6):
     """
     y_t = cp.array(y_true)
     y_p = cp.array(y_pred)
-    return cp.sqrt(cp.mean(cp.power(cp.log(y_t + smooth) - cp.log(y_p + smooth), 2)))
+    return cp.sqrt(
+        cp.mean(cp.power(cp.log(y_t + smooth) - cp.log(y_p + smooth), 2)))
 
 
 def log10_cupy(y_true, y_pred, smooth=1e-6):
@@ -164,7 +168,9 @@ def delta_threshold_cupy(y_true, y_pred, smooth=1e-6, i=1):
     """
     y_t = cp.array(y_true)
     y_p = cp.array(y_pred)
-    return cp.count_nonzero(cp.maximum(y_t/(smooth + y_p), y_p/(smooth + y_t)) < 1.25**i)/y_t.size
+    return cp.count_nonzero(
+        cp.maximum(y_t / (smooth + y_p), y_p /
+                   (smooth + y_t)) < 1.25**i) / y_t.size
 
 
 def SILog_cupy(y_true, y_pred):
@@ -173,7 +179,7 @@ def SILog_cupy(y_true, y_pred):
     y_t = cp.array(y_true)
     y_p = cp.array(y_pred)
     difference = cp.log(y_t + smooth) - cp.log(y_p + smooth)
-    return cp.mean(cp.power(difference, 2)) -  cp.power(cp.mean(difference), 2)
+    return cp.mean(cp.power(difference, 2)) - cp.power(cp.mean(difference), 2)
 
 
 # absErrorRel:  Relative absolute error (percent)
