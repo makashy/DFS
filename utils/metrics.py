@@ -116,3 +116,66 @@ def class_IOU_list(class_list):
     for i, class_name in enumerate(class_list):
         IOU_list.append(classIOU(class_name, i))
     return IOU_list
+
+
+################################ depth estimation ###
+
+
+def MAPE_cupy(y_true, y_pred, smooth=1e-6):
+    """Computes the Mean Absolute Percentage Error between y_true and y_pred (percent).
+    (absErrorRel in kitti dataset)
+    Alternatives:
+        tf.keras.metrics.MeanAbsolutePercentageError
+        tf.keras.losses.MeanAbsolutePercentageError
+    """
+    y_t = cp.array(y_true)
+    y_p = cp.array(y_pred)
+    return cp.mean(cp.abs(y_t - y_p) / (y_t + smooth) * 100)
+
+
+def RMSE_cupy(y_true, y_pred):
+    """Computes root mean squared error metric between y_true and y_pred.
+    Alternatives:
+        tf.keras.metrics.RootMeanSquaredError
+    """
+    y_t = cp.array(y_true)
+    y_p = cp.array(y_pred)
+    return cp.sqrt(cp.mean(cp.power(y_t - y_p, 2)))
+
+
+def RMSElog_cupy(y_true, y_pred, smooth=1e-6):
+    """Computes root mean squared error metric in log space  between y_true and y_pred.
+    """
+    y_t = cp.array(y_true)
+    y_p = cp.array(y_pred)
+    return cp.sqrt(cp.mean(cp.power(cp.log(y_t + smooth) - cp.log(y_p + smooth), 2)))
+
+
+def log10_cupy(y_true, y_pred, smooth=1e-6):
+    """Computes mean absolute error metric in log10 space between y_true and y_pred.
+    """
+    y_t = cp.array(y_true)
+    y_p = cp.array(y_pred)
+    return cp.mean(cp.abs(cp.log10(y_t + smooth) - cp.log10(y_p + smooth)))
+
+
+def delta_threshold_cupy(y_true, y_pred, smooth=1e-6, i=1):
+    """Computes delta threshold metric in between y_true and y_pred.
+    """
+    y_t = cp.array(y_true)
+    y_p = cp.array(y_pred)
+    return cp.count_nonzero(cp.maximum(y_t/(smooth + y_p), y_p/(smooth + y_t)) < 1.25**i)/y_t.size
+
+
+def SILog_cupy(y_true, y_pred):
+    """Computes  Scale invariant logarithmic error metric in between y_true and y_pred.
+    """
+    y_t = cp.array(y_true)
+    y_p = cp.array(y_pred)
+    difference = cp.log(y_t + smooth) - cp.log(y_p + smooth)
+    return cp.mean(cp.power(difference, 2)) -  cp.power(cp.mean(difference), 2)
+
+
+# absErrorRel:  Relative absolute error (percent)
+
+# iRMSE:  Root mean squared error of the inverse depth [1/km]
