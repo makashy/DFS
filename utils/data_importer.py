@@ -199,6 +199,8 @@ class DatasetGenerator(Sequence):
                         dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
             ])
+            if self.data_type is 'float32':
+                segmentation = np.array(segmentation, dtype=np.float32)
             data_dict['segmentation'] = segmentation
 
         if 'sparse_segmentation' in self.data_list:
@@ -260,10 +262,12 @@ class DatasetGenerator(Sequence):
                 for i in range(self.index - self.batch_size, self.index)
             ])
             semantic_depth_array = segmentation * depth
+            ######
             # semantic_depth_array = np.rollaxis(semantic_depth_array, -1, 0)
             # semantic_depth = []
             # for array in semantic_depth_array:
             #     semantic_depth.append(np.expand_dims(array, -1))
+            #####
             semantic_depth = semantic_depth_array
 
             data_dict['semantic_depth'] = semantic_depth
