@@ -2,7 +2,6 @@
 import numpy as np
 from numba import jit
 import tensorflow as tf
-import cupy as cp
 
 
 def mean_IOU(y_true, y_pred):
@@ -125,64 +124,135 @@ def class_IOU_list(class_list):
 ################################ depth estimation ###
 
 
-def MAPE_cupy(y_true, y_pred, smooth=1e-6):
+class MAPE(tf.keras.losses.Loss):
     """Computes the Mean Absolute Percentage Error between y_true and y_pred (percent).
     (absErrorRel in kitti dataset)
     Alternatives:
         tf.keras.metrics.MeanAbsolutePercentageError
         tf.keras.losses.MeanAbsolutePercentageError
+
+    Arguments:
+        smooth: For avoiding devison by zero
+        minimum_y_true: minimum acceptable value for y_true.
+            For those y_true smaller than minimum_y_true, the result is zero.
     """
-    y_t = cp.array(y_true)
-    y_p = cp.array(y_pred)
-    return cp.mean(cp.abs(y_t - y_p) / (y_t + smooth) * 100)
+    def __init__(self,
+                 smooth=1e-6,
+                 minimum_y_true=0.5,
+                 reduction=tf.keras.losses.Reduction.AUTO):
+        super().__init__(reduction=reduction, name='MAPE')
+        self.smooth = smooth
+        self.minimum_y_true = minimum_y_true
+
+    def call(self, y_true, y_pred):
+        "Computes and returns the metric value tensor."
+        return tf.reduce_mean(
+            tf.abs(y_true - y_pred) *
+            tf.cast(tf.logical_not(y_true < self.minimum_y_true), tf.float32) /
+            (y_true + self.smooth) * 100)
 
 
-def RMSE_cupy(y_true, y_pred):
+class MSPE(tf.keras.losses.Loss):
+    """Computes the Mean Square Percentage Error between y_true and y_pred (percent).
+    (absErrorRel in kitti dataset)
+    Alternatives:
+        tf.keras.metrics.MeanAbsolutePercentageError
+        tf.keras.losses.MeanAbsolutePercentageError
+
+    Arguments:
+        smooth: For avoiding devison by zero
+        minimum_y_true: minimum acceptable value for y_true.
+            For those y_true smaller than minimum_y_true, the result is zero
+    """
+    def __init__(self,
+                 smooth=1e-6,
+                 minimum_y_true=0.5,
+                 reduction=tf.keras.losses.Reduction.AUTO):
+        super().__init__(reduction=reduction, name='MSPE')
+        self.smooth = smooth
+        self.minimum_y_true = minimum_y_true
+
+    def call(self, y_true, y_pred):
+        "Computes and returns the metric value tensor."
+        return tf.reduce_mean(
+            tf.pow(y_true - y_pred, 2) *
+            tf.cast(tf.logical_not(y_true < self.minimum_y_true), tf.float32) /
+            (y_true + self.smooth) * 100)
+
+
+class RMSE(tf.keras.losses.Loss):
     """Computes root mean squared error metric between y_true and y_pred.
     Alternatives:
         tf.keras.metrics.RootMeanSquaredError
     """
-    y_t = cp.array(y_true)
-    y_p = cp.array(y_pred)
-    return cp.sqrt(cp.mean(cp.power(y_t - y_p, 2)))
+    def __init__(self, reduction=tf.keras.losses.Reduction.AUTO):
+        super().__init__(reduction=reduction, name='RMSE')
+
+    def call(self, y_true, y_pred):
+        "Computes and returns the metric value tensor."
+        return tf.sqrt(tf.reduce_mean(tf.pow(y_true - y_pred, 2)))
 
 
-def RMSElog_cupy(y_true, y_pred, smooth=1e-6):
+class RMSELog(tf.keras.losses.Loss):
     """Computes root mean squared error metric in log space  between y_true and y_pred.
     """
-    y_t = cp.array(y_true)
-    y_p = cp.array(y_pred)
-    return cp.sqrt(
-        cp.mean(cp.power(cp.log(y_t + smooth) - cp.log(y_p + smooth), 2)))
+    def __init__(self, smooth=1e-6, reduction=tf.keras.losses.Reduction.AUTO):
+        super().__init__(reduction=reduction, name='RMSELog')
+        self.smooth = smooth
+
+    def call(self, y_true, y_pred):
+        "Computes and returns the metric value tensor."
+        return tf.sqrt(
+            tf.reduce_mean(
+                tf.pow(
+                    tf.math.log(y_true + self.smooth) -
+                    tf.math.log(y_pred + self.smooth), 2)))
 
 
-def log10_cupy(y_true, y_pred, smooth=1e-6):
+class Log10(tf.keras.losses.Loss):
     """Computes mean absolute error metric in log10 space between y_true and y_pred.
     """
-    y_t = cp.array(y_true)
-    y_p = cp.array(y_pred)
-    return cp.mean(cp.abs(cp.log10(y_t + smooth) - cp.log10(y_p + smooth)))
+    def __init__(self, smooth=1e-6, reduction=tf.keras.losses.Reduction.AUTO):
+        super().__init__(reduction=reduction, name='Log10')
+        self.smooth = smooth
+
+    def call(self, y_true, y_pred):
+        "Computes and returns the metric value tensor."
+        return tf.reduce_mean(
+            tf.abs(
+                tf.math.log(y_true + self.smooth) -
+                tf.math.log(y_pred + self.smooth)))
 
 
-def delta_threshold_cupy(y_true, y_pred, smooth=1e-6, i=1):
+class DeltaThreshold(tf.keras.losses.Loss):
     """Computes delta threshold metric in between y_true and y_pred.
     """
-    y_t = cp.array(y_true)
-    y_p = cp.array(y_pred)
-    return cp.count_nonzero(
-        cp.maximum(y_t / (smooth + y_p), y_p /
-                   (smooth + y_t)) < 1.25**i) / y_t.size
+    def __init__(self,
+                 smooth=1e-6,
+                 i=1,
+                 reduction=tf.keras.losses.Reduction.AUTO):
+        super().__init__(reduction=reduction, name='delta_threshold_' + str(i))
+        self.i = i
+        self.smooth = smooth
+
+    def call(self, y_true, y_pred):
+        "Computes and returns the metric value tensor."
+        return tf.math.count_nonzero(
+            tf.maximum(y_true / (self.smooth + y_pred), y_pred /
+                       (self.smooth + y_true)) < 1.25**self.i) / tf.size(
+                           y_true, out_type=tf.dtypes.int64)
 
 
-def SILog_cupy(y_true, y_pred, smooth=1e-6):
+class SILog(tf.keras.losses.Loss):
     """Computes  Scale invariant logarithmic error metric in between y_true and y_pred.
     """
-    y_t = cp.array(y_true)
-    y_p = cp.array(y_pred)
-    difference = cp.log(y_t + smooth) - cp.log(y_p + smooth)
-    return cp.mean(cp.power(difference, 2)) - cp.power(cp.mean(difference), 2)
+    def __init__(self, smooth=1e-6, reduction=tf.keras.losses.Reduction.AUTO):
+        super().__init__(reduction=reduction, name='SILog')
+        self.smooth = smooth
 
-
-# absErrorRel:  Relative absolute error (percent)
-
-# iRMSE:  Root mean squared error of the inverse depth [1/km]
+    def call(self, y_true, y_pred):
+        "Computes and returns the metric value tensor."
+        difference = tf.math.log(y_true + self.smooth) - \
+                     tf.math.log(y_pred + self.smooth)
+        return tf.reduce_mean(tf.pow(difference, 2)) - tf.pow(
+            tf.reduce_mean(difference), 2)
