@@ -13,34 +13,38 @@ from tensorflow.keras.layers import (  # pylint: disable=import-error
 ACTIVATION = 'relu'  #'selu'
 
 
-def baseline(input_tensor, input_filter, output_filter, block_name):
+def baseline(input_tensor, input_filter, output_filter, block_name, batch_normalization=True):
     "Baseline block"
     with tf.name_scope(block_name):
         result = Conv2D(filters=input_filter, kernel_size=1,
                         padding='same')(input_tensor)
-        result = BatchNormalization()(result)
+        if batch_normalization:
+            result = BatchNormalization()(result)
         result = Activation(ACTIVATION)(result)
 
         result = Conv2D(filters=input_filter, kernel_size=3,
                         padding='same')(input_tensor)
-        result = BatchNormalization()(result)
+        if batch_normalization:
+            result = BatchNormalization()(result)
         result = Activation(ACTIVATION)(result)
 
         result = Conv2D(filters=output_filter, kernel_size=1,
                         padding='same')(input_tensor)
-        result = BatchNormalization()(result)
+        if batch_normalization:
+            result = BatchNormalization()(result)
         result = tf.keras.layers.add([result, input_tensor])
         result = Activation(ACTIVATION)(result)
 
     return result
 
 
-def bottleneck(input_tensor, input_filter, output_filter, strides, block_name):
+def bottleneck(input_tensor, input_filter, output_filter, strides, block_name, batch_normalization=True):
     "Bottleneck block"
     with tf.name_scope(block_name):
         result = Conv2D(filters=input_filter, kernel_size=1,
                         strides=strides)(input_tensor)  # padding='same'
-        result = BatchNormalization()(result)
+        if batch_normalization:
+            result = BatchNormalization()(result)
         result = Activation(ACTIVATION)(result)
 
         projection = Conv2D(filters=output_filter,
@@ -49,12 +53,14 @@ def bottleneck(input_tensor, input_filter, output_filter, strides, block_name):
 
         result = Conv2D(filters=input_filter, kernel_size=3,
                         padding='same')(result)
-        result = BatchNormalization()(result)
+        if batch_normalization:
+            result = BatchNormalization()(result)
         result = Activation(ACTIVATION)(result)
 
         result = Conv2D(filters=output_filter,
                         kernel_size=1)(result)  #padding='same'
-        result = BatchNormalization()(result)
+        if batch_normalization:
+            result = BatchNormalization()(result)
         result = tf.keras.layers.add([result, projection])
         result = Activation(ACTIVATION)(result)
 
@@ -80,7 +86,7 @@ def interleave(tensors, axis):
                                     new_shape)
 
 
-def unpool_as_conv(input_tensor, output_filter, activation, name):
+def unpool_as_conv(input_tensor, output_filter, activation, name, batch_normalization=True):
     "Figure 3 in paper[1]↑"
     with tf.name_scope(name):
         result_A = Conv2D(
@@ -113,8 +119,8 @@ def unpool_as_conv(input_tensor, output_filter, activation, name):
         left = interleave([result_A, result_B], axis=1)  # columns
         right = interleave([result_C, result_D], axis=1)  # columns
         result = interleave([left, right], axis=2)  # rows
-
-        result = BatchNormalization()(result)
+        if batch_normalization:
+            result = BatchNormalization()(result)
 
         if activation:
             result = Activation(ACTIVATION)(result)
@@ -122,24 +128,27 @@ def unpool_as_conv(input_tensor, output_filter, activation, name):
     return result
 
 
-def up_project(input_tensor, output_filter, block_name):
+def up_project(input_tensor, output_filter, block_name, batch_normalization=True):
     "Figure 2, (d) in paper[1]↑"
     with tf.name_scope(block_name):
         result_1 = unpool_as_conv(input_tensor=input_tensor,
                                   output_filter=output_filter,
                                   activation=True,
-                                  name='result_1')
+                                  name='result_1',
+                                  batch_normalization=batch_normalization)
 
         result_1 = Conv2D(filters=output_filter,
                           kernel_size=3,
                           strides=1,
                           padding='SAME')(result_1)
-        result_1 = BatchNormalization()(result_1)
+        if batch_normalization:
+            result_1 = BatchNormalization()(result_1)
 
         result_2 = unpool_as_conv(input_tensor=input_tensor,
                                   output_filter=output_filter,
                                   activation=False,
-                                  name='result_2')
+                                  name='result_2',
+                                  batch_normalization=batch_normalization)
 
         result = tf.keras.layers.add([result_1, result_2])
         result = Activation(ACTIVATION)(result)
