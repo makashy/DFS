@@ -155,7 +155,8 @@ def up_project(input_tensor, output_filter, block_name, batch_normalization=True
 
     return result
 
-
+## M0: original FCRN (With addition of a up_project at last layers
+# and additional con2d at final layer)
 def model(img_shape=(480, 640, 3)):
     """FCRN model"""
 
@@ -273,8 +274,15 @@ def model(img_shape=(480, 640, 3)):
                         block_name='up_project_additional')
     ###
 
-    #         result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
-    outputs = Conv2D(filters=1, kernel_size=1, strides=1,
+ # result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
+    result = Conv2D(filters=1, kernel_size=1, strides=1,
+                    activation='elu')(result)
+
+    outputs = Conv2D(filters=1,
+                     kernel_size=1,
+                     strides=1,
+                     kernel_initializer=tf.constant_initializer(1),
+                     bias_initializer=tf.constant_initializer(1.0001),
                      name='Prediction')(result)
 
     return tf.keras.models.Model(inputs=inputs, outputs=outputs, name='FCRN')
