@@ -436,6 +436,8 @@ def model_M1(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19), batch_normalizat
                                  outputs=outputs,
                                  name='FCRN')
 
+## M2: It has additional decoder branch for each semantic class
+def model_M2(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
     """FCRN model"""
 
     inputs_rgb = Input(shape=rgb_shape)
@@ -544,14 +546,29 @@ def model_M1(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19), batch_normalizat
     result = up_project(input_tensor=result,
                         output_filter=128,
                         block_name='up_project')
-    result = up_project(input_tensor=result,
-                        output_filter=64,
-                        block_name='up_project')
 
-    ####TODO: remove? (not present in the paper)
-    result = up_project(input_tensor=result,
-                        output_filter=32,
-                        block_name='up_project_additional')
+    semantic_depth = []
+    for _ in range(seg_shape[2]):
+        temp = Conv2D(filters=4,
+                      kernel_size=3,
+                      padding='same',
+                      name=tf.compat.v1.get_default_graph().unique_name('seperator'))(result)
+        temp = up_project(input_tensor=temp,
+                          output_filter=2,
+                          block_name='up_project')
+        temp = up_project(input_tensor=temp,
+                          output_filter=1,
+                          block_name='up_project')
+        semantic_depth.append(temp)
+
+    complete_depth_map = Add(name='complete_depth_map')(semantic_depth)
+    semantic_depth_maps = Concatenate(name='semantic_depth_maps')(semantic_depth)
+
+    return tf.keras.models.Model(inputs=[inputs_rgb, inputs_seg],
+                                 outputs=[complete_depth_map, semantic_depth_maps],
+                                 name='FCRN')
+
+
     ###
 
     #         result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
