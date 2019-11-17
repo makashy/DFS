@@ -287,8 +287,155 @@ def model(img_shape=(480, 640, 3)):
 
     return tf.keras.models.Model(inputs=inputs, outputs=outputs, name='FCRN')
 
+## M1: It only use a concatenated input with combination of RGB image and Semantic Segmentation Map
+def model_M1(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19), batch_normalization=True):
+    """FCRN model"""
 
-def model_rgb_seg(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
+    inputs_rgb = Input(shape=rgb_shape)
+    inputs_seg = Input(shape=seg_shape)
+
+    result = Concatenate()([inputs_rgb, inputs_seg])
+    result = Conv2D(filters=64, kernel_size=7, strides=2,
+                    padding='same')(result)
+    if batch_normalization:
+        result = BatchNormalization()(result)
+    result = MaxPool2D(pool_size=3, strides=2, padding='same')(result)
+    result = Activation(ACTIVATION)(result)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=64,
+                        output_filter=256,
+                        strides=1,
+                        block_name='bottleneck',
+                        batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=64,
+                      output_filter=256,
+                      block_name='baseline',
+                        batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=64,
+                      output_filter=256,
+                      block_name='baseline',
+                        batch_normalization=batch_normalization)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=128,
+                        output_filter=512,
+                        strides=2,
+                        block_name='bottleneck',
+                        batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline',
+                        batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline',
+                        batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline',
+                        batch_normalization=batch_normalization)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=256,
+                        output_filter=1024,
+                        strides=2,
+                        block_name='bottleneck',
+                        batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline',
+                      batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline',
+                      batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline',
+                      batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline',
+                      batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline',
+                      batch_normalization=batch_normalization)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=512,
+                        output_filter=2048,
+                        strides=2,
+                        block_name='bottleneck',
+                        batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=512,
+                      output_filter=2048,
+                      block_name='baseline',
+                      batch_normalization=batch_normalization)
+
+    result = baseline(input_tensor=result,
+                      input_filter=512,
+                      output_filter=2048,
+                      block_name='baseline',
+                      batch_normalization=batch_normalization)
+
+    result = Conv2D(filters=1024, kernel_size=1, strides=1)(result)
+    if batch_normalization:
+        result = BatchNormalization()(result)
+
+    result = up_project(input_tensor=result,
+                        output_filter=512,
+                        block_name='up_project',
+                        batch_normalization=batch_normalization)
+    result = up_project(input_tensor=result,
+                        output_filter=256,
+                        block_name='up_project',
+                        batch_normalization=batch_normalization)
+    result = up_project(input_tensor=result,
+                        output_filter=128,
+                        block_name='up_project',
+                        batch_normalization=batch_normalization)
+    result = up_project(input_tensor=result,
+                        output_filter=64,
+                        block_name='up_project',
+                        batch_normalization=batch_normalization)
+
+    result = up_project(input_tensor=result,
+                        output_filter=32,
+                        block_name='up_project_additional',
+                        batch_normalization=batch_normalization)
+
+    result = Conv2D(filters=1, kernel_size=1, strides=1)(result)
+
+    outputs = Activation('relu', name='Prediction')(result)
+
+    return tf.keras.models.Model(inputs=[inputs_rgb, inputs_seg],
+                                 outputs=outputs,
+                                 name='FCRN')
+
     """FCRN model"""
 
     inputs_rgb = Input(shape=rgb_shape)
