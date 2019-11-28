@@ -569,6 +569,142 @@ def model_M2(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
                                  name='FCRN')
 
 
+## M3: It has additional decoder branch for each semantic class
+def model_m3(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
+    """FCRN model"""
+
+    inputs_rgb = Input(shape=rgb_shape)
+    inputs_seg = Input(shape=seg_shape)
+
+    result = Concatenate()([inputs_rgb, inputs_seg])
+    result = Conv2D(filters=64, kernel_size=7, strides=2,
+                    padding='same')(result)
+    result = BatchNormalization()(result)
+    result = MaxPool2D(pool_size=3, strides=2, padding='same')(result)
+    result = Activation(ACTIVATION)(result)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=64,
+                        output_filter=256,
+                        strides=1,
+                        block_name='bottleneck')
+
+    result = baseline(input_tensor=result,
+                      input_filter=64,
+                      output_filter=256,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=64,
+                      output_filter=256,
+                      block_name='baseline')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=128,
+                        output_filter=512,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=128,
+                      output_filter=512,
+                      block_name='baseline')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=256,
+                        output_filter=1024,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=256,
+                      output_filter=1024,
+                      block_name='baseline')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=512,
+                        output_filter=2048,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = baseline(input_tensor=result,
+                      input_filter=512,
+                      output_filter=2048,
+                      block_name='baseline')
+
+    result = baseline(input_tensor=result,
+                      input_filter=512,
+                      output_filter=2048,
+                      block_name='baseline')
+
+    result = Conv2D(filters=1024, kernel_size=1, strides=1)(result)
+    result = BatchNormalization()(result)
+
+    result = up_project(input_tensor=result,
+                        output_filter=512,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=256,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=128,
+                        block_name='up_project')
+
+    semantic_depth = []
+    for _ in range(seg_shape[2]):
+        temp = Conv2D(filters=4,
+                      kernel_size=3,
+                      padding='same',
+                      name=tf.compat.v1.get_default_graph().unique_name('seperator'))(result)
+        temp = up_project(input_tensor=temp,
+                          output_filter=2,
+                          block_name='up_project')
+        temp = up_project(input_tensor=temp,
+                          output_filter=1,
+                          block_name='up_project')
+        semantic_depth.append(temp)
+
+    predict = Add()(semantic_depth)
+    predict = Activation('relu', name='predict')(predict)
+    outputs = [predict]
+    for class_output in semantic_depth:
+        outputs.append(Activation('relu')(class_output))
+
+    return tf.keras.models.Model(inputs=[inputs_rgb, inputs_seg],
+                                 outputs=outputs,
+                                 name='FCRN')
+
+
     ###
 
     #         result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
