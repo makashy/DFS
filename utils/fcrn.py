@@ -157,7 +157,7 @@ def up_project(input_tensor, output_filter, block_name, batch_normalization=True
 
 ## M0: original FCRN (With addition of a up_project at last layers
 # and additional con2d at final layer)
-def model(img_shape=(480, 640, 3)):
+def model_m0(img_shape=(480, 640, 3)):
     """FCRN model"""
 
     inputs = Input(shape=img_shape)
@@ -267,28 +267,18 @@ def model(img_shape=(480, 640, 3)):
     result = up_project(input_tensor=result,
                         output_filter=64,
                         block_name='up_project')
-
-    ####TODO: remove? (not present in the paper)
     result = up_project(input_tensor=result,
                         output_filter=32,
                         block_name='up_project_additional')
-    ###
 
- # result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
-    result = Conv2D(filters=1, kernel_size=1, strides=1,
-                    activation='elu')(result)
 
-    outputs = Conv2D(filters=1,
-                     kernel_size=1,
-                     strides=1,
-                     kernel_initializer=tf.constant_initializer(1),
-                     bias_initializer=tf.constant_initializer(1.0001),
-                     name='Prediction')(result)
+    # result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
+    outputs = Conv2D(filters=1, kernel_size=1, strides=1, name='predict')(result)
 
     return tf.keras.models.Model(inputs=inputs, outputs=outputs, name='FCRN')
 
 ## M1: It only use a concatenated input with combination of RGB image and Semantic Segmentation Map
-def model_M1(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19), batch_normalization=True):
+def model_m1(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19), batch_normalization=True):
     """FCRN model"""
 
     inputs_rgb = Input(shape=rgb_shape)
@@ -437,7 +427,7 @@ def model_M1(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19), batch_normalizat
                                  name='FCRN')
 
 ## M2: It has additional decoder branch for each semantic class
-def model_M2(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
+def model_m2(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
     """FCRN model"""
 
     inputs_rgb = Input(shape=rgb_shape)
@@ -867,6 +857,7 @@ def model_m4(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
     return tf.keras.models.Model(inputs=[inputs_rgb, inputs_seg],
                                  outputs=outputs,
                                  name='FCRN')
+
 
 def model_m5(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
     """FCRN model"""
