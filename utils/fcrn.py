@@ -174,10 +174,10 @@ def up_project(input_tensor,
 
 ## M0: original FCRN (With addition of a up_project at last layers
 # and additional con2d at final layer)
-def model_m0(img_shape=(480, 640, 3)):
+def model_m0(rgb_shape=(480, 640, 3)):
     """FCRN model"""
 
-    inputs = Input(shape=img_shape)
+    inputs = Input(shape=rgb_shape)
 
     result = Conv2D(filters=64, kernel_size=7, strides=2,
                     padding='same')(inputs)
@@ -833,11 +833,9 @@ def model_m4(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
     #                     output_filter=64,
     #                     block_name='up_project')
 
-    # ####TODO: remove? (not present in the paper)
     # result = up_project(input_tensor=result,
     #                     output_filter=32,
     #                     block_name='up_project_additional')
-    ###
 
     semantic_depth = []
     for i in range(seg_shape[2]):
