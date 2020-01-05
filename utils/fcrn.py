@@ -288,9 +288,8 @@ def model_m0(rgb_shape=(480, 640, 3)):
                         output_filter=32,
                         block_name='up_project_additional')
 
-    # result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
-    outputs = Conv2D(filters=1, kernel_size=1, strides=1,
-                     name='predict')(result)
+    result = Conv2D(filters=1, kernel_size=1, strides=1)(result)
+    outputs = Activation(ACTIVATION, name='predict')(result)
 
     return tf.keras.models.Model(inputs=inputs, outputs=outputs, name='FCRN')
 
@@ -1151,7 +1150,6 @@ def model_m6(rgb_shape=(480, 640, 3)):
                         output_filter=32,
                         block_name='up_project_additional')
 
-    # result = tf.layers.dropout(inputs=result, rate=0.4, training=mode == tf.estimator.ModeKeys.TRAIN)
     result = Conv2D(filters=1,
                      kernel_size=1,
                      strides=1)(result)
