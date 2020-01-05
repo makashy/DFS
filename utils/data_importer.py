@@ -168,14 +168,17 @@ class DatasetGenerator(Sequence):
         self.index = self.index + self.batch_size
 
         data_dict = dict()
+        
+        if self.output_shape is None:
+            output_shape = image.shape[:2]
+        else:
+            output_shape = self.output_shape
+
         if 'image' in self.data_list:
 
             image = imread(self.dataset.RGB[0], plugin='matplotlib')[:, :, :3]
 
-            if self.output_shape is None:
-                output_shape = image.shape[:2]
-            else:
-                output_shape = self.output_shape
+
 
             image = np.array([
                 resize(src=imread(self.dataset.RGB[i],
