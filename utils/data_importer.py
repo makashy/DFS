@@ -86,7 +86,7 @@ class DatasetGenerator(Sequence):
                  batch_size=1,
                  repeater=True,
                  shuffle=True,
-                 output_shape=None,
+                 output_shape=(480, 640),
                  data_type='float32',
                  feature_types=['image'],
                  label_types=['segmentation'],
@@ -168,11 +168,6 @@ class DatasetGenerator(Sequence):
         self.index = self.index + self.batch_size
 
         data_dict = dict()
-        
-        if self.output_shape is None:
-            output_shape = image.shape[:2]
-        else:
-            output_shape = self.output_shape
 
         if 'image' in self.data_list:
 
@@ -181,7 +176,7 @@ class DatasetGenerator(Sequence):
             image = np.array([
                 resize(src=imread(self.dataset.RGB[i],
                                   plugin='matplotlib')[:, :, :3],
-                       dsize=(output_shape[1], output_shape[0]))
+                       dsize=(self.output_shape[1], self.output_shape[0]))
                 for i in range(self.index - self.batch_size, self.index)
             ])
 
@@ -195,7 +190,7 @@ class DatasetGenerator(Sequence):
                         img_as_ubyte(
                             resize(src=imread(self.dataset.SEGMENTATION[i],
                                               plugin='matplotlib')[:, :, :3],
-                                   dsize=(output_shape[1], output_shape[0]))),
+                                   dsize=(self.output_shape[1], self.output_shape[0]))),
                         class_ids=self.class_ids,
                         dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
@@ -210,7 +205,7 @@ class DatasetGenerator(Sequence):
                        img_as_ubyte(
                            resize(src=imread(self.dataset.SEGMENTATION[i],
                                              plugin='matplotlib')[:, :, :3],
-                                  dsize=(output_shape[1], output_shape[0]))),
+                                  dsize=(self.output_shape[1], self.output_shape[0]))),
                        class_ids=self.class_ids,
                        dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
@@ -220,7 +215,7 @@ class DatasetGenerator(Sequence):
         if 'depth' in self.data_list:
             depth = np.array([
                 resize(src=imread(self.dataset.DEPTH[i], plugin='pil'),
-                       dsize=(output_shape[1], output_shape[0]))
+                       dsize=(self.output_shape[1], self.output_shape[0]))
                 for i in range(self.index - self.batch_size, self.index)
             ])
 
@@ -240,7 +235,7 @@ class DatasetGenerator(Sequence):
             except NameError:
                 depth = np.array([
                     resize(src=imread(self.dataset.DEPTH[i], plugin='pil'),
-                           dsize=(output_shape[1], output_shape[0]))
+                           dsize=(self.output_shape[1], self.output_shape[0]))
                     for i in range(self.index - self.batch_size, self.index)
                 ])
 
@@ -257,7 +252,7 @@ class DatasetGenerator(Sequence):
                         img_as_ubyte(
                             resize(src=imread(self.dataset.SEGMENTATION[i],
                                               plugin='matplotlib')[:, :, :3],
-                                   dsize=(output_shape[1], output_shape[0]))),
+                                   dsize=(self.output_shape[1], self.output_shape[0]))),
                         class_ids=self.class_ids,
                         dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
