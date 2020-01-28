@@ -10,7 +10,7 @@ import tables
 from numba import jit
 from skimage import img_as_float32, img_as_ubyte
 from skimage.io import imread
-from tensorflow.python.keras.utils.data_utils import Sequence  #pylint: disable=no-name-in-module
+from tensorflow.python.keras.utils.data_utils import Sequence  #pylint: disable=import-error,no-name-in-module
 
 # from skimage.transform import resize
 from cv2 import resize  #pylint: disable=no-name-in-module
@@ -178,8 +178,6 @@ class DatasetGenerator(Sequence):
 
             image = imread(self.dataset.RGB[0], plugin='matplotlib')[:, :, :3]
 
-
-
             image = np.array([
                 resize(src=imread(self.dataset.RGB[i],
                                   plugin='matplotlib')[:, :, :3],
@@ -294,7 +292,7 @@ class SynthiaSf(DatasetGenerator):
 
         self.dataset_dir = dataset_dir
         self.max_distance = 1000
-        super().__init__(dataset_name='SYNTHIA_SF', **kwargs)
+        super().__init__(**kwargs)
 
     def data_frame_creator(self):
         """ pandas dataFrame for addresses of rgb, depth and segmentation"""
@@ -418,7 +416,7 @@ class VIPER(DatasetGenerator):
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
-        super().__init__(dataset_name='VIPER', **kwargs)
+        super().__init__(**kwargs)
 
     def data_frame_creator(self):
         """Pandas dataFrame for addresses of images and corresponding labels"""
@@ -473,7 +471,7 @@ class MAPILLARY(DatasetGenerator):
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
-        super().__init__(dataset_name='MAPILLARY', **kwargs)
+        super().__init__(**kwargs)
 
     def data_frame_creator(self):
         """Pandas dataFrame for addresses of images and corresponding labels"""
@@ -521,7 +519,7 @@ class CITYSCAPES(DatasetGenerator):
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
-        super().__init__(dataset_name='CITYSCAPES', **kwargs)
+        super().__init__(**kwargs)
 
     def data_frame_creator(self):
         """Pandas dataFrame for addresses of images and corresponding labels"""
