@@ -13,7 +13,7 @@ from skimage.io import imread
 from tensorflow.python.keras.utils.data_utils import Sequence  #pylint: disable=import-error,no-name-in-module
 
 # from skimage.transform import resize
-from cv2 import resize  #pylint: disable=no-name-in-module
+import cv2
 
 COMMON_LABEL_IDS = [
     3, 13, 15, 17, 19, 20, 27, 29, 30, 45, 48, 50, 52, 54, 55, 57, 58, 61, 65
@@ -157,6 +157,11 @@ class DatasetGenerator(Sequence):
     def __getitem__(self, idx):
         return self.next()
 
+    def resize(self, array):
+        return cv2.resize(src=array,
+                          dsize=(self.output_shape[1], self.output_shape[0]),
+                          interpolation=cv2.INTER_NEAREST)
+
     def next(self):
         """Retrieve the next pairs from the dataset"""
 
@@ -174,9 +179,8 @@ class DatasetGenerator(Sequence):
             image = imread(self.dataset.RGB[0], plugin='matplotlib')[:, :, :3]
 
             image = np.array([
-                resize(src=imread(self.dataset.RGB[i],
-                                  plugin='matplotlib')[:, :, :3],
-                       dsize=(self.output_shape[1], self.output_shape[0]))
+                self.resize(imread(self.dataset.RGB[i],
+                                   plugin='matplotlib')[:, :, :3])
                 for i in range(self.index - self.batch_size, self.index)
             ])
 
@@ -188,9 +192,8 @@ class DatasetGenerator(Sequence):
             segmentation = np.array([
                 one_hot(self.label_table,
                         img_as_ubyte(
-                            resize(src=imread(self.dataset.SEGMENTATION[i],
-                                              plugin='matplotlib')[:, :, :3],
-                                   dsize=(self.output_shape[1], self.output_shape[0]))),
+                            self.resize(imread(self.dataset.SEGMENTATION[i],
+                                              plugin='matplotlib')[:, :, :3])),
                         class_ids=self.class_ids,
                         dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
@@ -203,9 +206,8 @@ class DatasetGenerator(Sequence):
             sparse_segmentation = np.array([
                 sparse(self.label_table,
                        img_as_ubyte(
-                           resize(src=imread(self.dataset.SEGMENTATION[i],
-                                             plugin='matplotlib')[:, :, :3],
-                                  dsize=(self.output_shape[1], self.output_shape[0]))),
+                           self.resize(imread(self.dataset.SEGMENTATION[i],
+                                             plugin='matplotlib')[:, :, :3])),
                        class_ids=self.class_ids,
                        dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
@@ -214,8 +216,7 @@ class DatasetGenerator(Sequence):
 
         if 'depth' in self.data_list:
             depth = np.array([
-                resize(src=imread(self.dataset.DEPTH[i], plugin='pil'),
-                       dsize=(self.output_shape[1], self.output_shape[0]))
+                self.resize(imread(self.dataset.DEPTH[i], plugin='pil'))
                 for i in range(self.index - self.batch_size, self.index)
             ])
 
@@ -234,8 +235,7 @@ class DatasetGenerator(Sequence):
                 depth
             except NameError:
                 depth = np.array([
-                    resize(src=imread(self.dataset.DEPTH[i], plugin='pil'),
-                           dsize=(self.output_shape[1], self.output_shape[0]))
+                    self.resize(imread(self.dataset.DEPTH[i], plugin='pil'))
                     for i in range(self.index - self.batch_size, self.index)
                 ])
 
@@ -250,9 +250,8 @@ class DatasetGenerator(Sequence):
             semantic_depth = np.array([
                 one_hot(self.label_table,
                         img_as_ubyte(
-                            resize(src=imread(self.dataset.SEGMENTATION[i],
-                                              plugin='matplotlib')[:, :, :3],
-                                   dsize=(self.output_shape[1], self.output_shape[0]))),
+                            self.resize(imread(self.dataset.SEGMENTATION[i],
+                                              plugin='matplotlib')[:, :, :3])),
                         class_ids=self.class_ids,
                         dataset_name=self.dataset_name)
                 for i in range(self.index - self.batch_size, self.index)
