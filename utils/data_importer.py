@@ -107,7 +107,6 @@ class DatasetGenerator(Sequence):
             np.floor(self.usage_range[0] * (self.dataset.shape[0] - 1)))
         self.end_index = np.int32(
             np.floor(self.usage_range[1] * (self.dataset.shape[0] - 1)))
-        self.size = self.end_index - self.start_index
         self.index = self.start_index
         self.label_table = self.load_label_table(table_address)
         self.class_ids = self.available_classes(
@@ -151,8 +150,7 @@ class DatasetGenerator(Sequence):
         return self.next()
 
     def __len__(self):
-        # return math.ceil(self.dsg.size / self.batch_size)
-        return np.int(np.ceil(self.size / self.batch_size))
+        return np.int(np.ceil(self.end_index - self.start_index / self.batch_size))
 
     def __getitem__(self, idx):
         return self.next()
