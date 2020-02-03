@@ -12,7 +12,7 @@ def draw(array, title, class_name, class_index):
         plt.imshow(array)
         plt.title(title)
     if title == 'sparse_segmentation':
-        plt.imshow(array)
+        plt.imshow(array[:, :, 0])
         plt.title(title)
     if title == 'segmentation':
         plt.imshow(array[:, :, class_index])
@@ -27,22 +27,33 @@ def draw(array, title, class_name, class_index):
 
 def draw_samples(feature_list,
                  label_list,
-                 sample_num,
-                 feature_types,
-                 label_types,
+                 predict_list,
+                 sample_num=None,
+                 feature_types=[],
+                 label_types=[],
+                 predict_types=[],
                  class_name='None',
-                 class_index=None):
+                 class_index=None,
+                 cmap="prism"):
     ''' Draws features and labels of a sample in separate rows
     '''
+    n_rows = 3
     n_columns = max(len(feature_types), len(label_types))
-    plt.figure(figsize=(n_columns * 5, 8))
+    plt.figure(figsize=(n_columns * 5, n_rows * 5))
+    plt.set_cmap(cmap)
+
     for i, title in enumerate(feature_types):
-        plt.subplot(2, n_columns, i + 1)
+        plt.subplot(n_rows, n_columns, i + 1)
         draw(feature_list[i][sample_num], title, class_name, class_index)
 
     for i, title in enumerate(label_types):
-        plt.subplot(2, n_columns, n_columns + i + 1)
+        plt.subplot(n_rows, n_columns, n_columns + i + 1)
         draw(label_list[i][sample_num], title, class_name, class_index)
+
+    if len(predict_types) > 0:
+        for i, title in enumerate(predict_types):
+            plt.subplot(n_rows, n_columns, n_columns + i + 1)
+            draw(predict_list[i][sample_num], title, class_name, class_index)
 
 
 def draw_point_cloud(depth, image):
@@ -57,6 +68,7 @@ def draw_point_cloud(depth, image):
     rgb_vector = np.reshape(image, [-1, 3])
     pcd.colors = o3d.utility.Vector3dVector(rgb_vector)  #pylint: disable=no-member
     o3d.visualization.draw_geometries([pcd])  #pylint: disable=no-member
+
 
 def draw_s_point_cloud(depth, segmentation):
     a = o3d.geometry.Image(segmentation)  #pylint: disable=no-member
