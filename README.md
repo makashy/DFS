@@ -12,6 +12,10 @@ conda install -c anaconda jupyterlab \
 conda install -c anaconda numba \
 conda install -c anaconda opencv \
 
+In case you want to use [lyft dataset](https://level5.lyft.com/dataset/#data-collection):\
+conda install -c conda-forge fire cachetools
+conda install -c anaconda black flake8 matplotlib numpy Pillow plotly
+conda install -c anaconda pyquaternion pytest scikit-learn scipy Shapely tqdm
 
 Not needed: \
 conda install -c open3d-admin open3d \
