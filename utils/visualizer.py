@@ -8,6 +8,18 @@ import open3d as o3d
 def draw(array, title, class_name, class_index):
     ''' Draws different array types differently
     '''
+    if title == 'focal_length':
+        plt.text(
+            0.5,
+            0.5,
+            "focal length(pixels):{}".format(array),
+            fontsize=10,
+            color='red',
+            horizontalalignment='center',
+            verticalalignment='center',
+        )
+        plt.axis('off')
+        plt.title(title)
     if title == 'image':
         plt.imshow(array)
         plt.title(title)
