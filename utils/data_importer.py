@@ -4,30 +4,20 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
+import cv2
 import numpy as np
 import pandas as pd
 import tables
+from lyft_dataset_sdk.lyftdataset import LyftDataset, LyftDatasetExplorer
 from numba import jit
 from skimage import img_as_float32, img_as_ubyte
 from skimage.io import imread
-from tensorflow.python.keras.utils.data_utils import Sequence  #pylint: disable=import-error,no-name-in-module
-
-# from skimage.transform import resize
-import cv2
+from tensorflow.python.keras.utils.data_utils import \
+    Sequence  # pylint: disable=import-error,no-name-in-module
 
 COMMON_LABEL_IDS = [
     3, 13, 15, 17, 19, 20, 27, 29, 30, 45, 48, 50, 52, 54, 55, 57, 58, 61, 65
 ]
-
-RGB = 0
-SEGMENTATION = 1
-INSTANCE = 2
-DEPTH = 3
-
-TRAIN = 0
-VALIDATION = 1
-TEST = 2
-
 
 @jit(nopython=True)
 def label_slicer(raw_label, class_color):
@@ -65,6 +55,63 @@ def sparse(label_table,
     return label
 
 
+def resize_and_split(input_array, output_shape, max_split):
+    """ Splits the input_array into several windows with shape of output_shape.
+        max_split determines the maximum number of splits in each direction.
+        If the input_array is too large to be covered by max_split windows, then
+        it will be resized before splitting to be consistant with max_split.
+    """
+    o_height = output_shape[0]
+    o_width = output_shape[1]
+    i_height = input_array.shape[0]
+    i_width = input_array.shape[1]
+
+    h_ratio = i_height / o_height
+    w_ratio = i_width / o_width
+    max_ratio = max(h_ratio, w_ratio)
+    resize_ratio = max_split / max_ratio
+    dims = (int(i_height * resize_ratio), int(i_width * resize_ratio))
+    # if (i_height*resize_ratio + i_width*resize_ratio) % 1 > 0:
+    #     print("Cropping occurred in resize!")
+
+    row_num = int(np.ceil(dims[0] / o_height))
+    column_num = int(np.ceil(dims[1] / o_width))
+    column_step = int(np.floor((dims[0] - o_height) / row_num))
+    row_step = int(np.floor((dims[1] - o_width) / column_num))
+
+    resized_img = cv2.resize(input_array, (dims[1], dims[0]),
+                             interpolation=cv2.INTER_NEAREST)
+    if len(resized_img.shape) == 2:
+        resized_img = np.expand_dims(resized_img, -1)
+
+    result = []
+    for row in range(row_num):
+        for column in range(column_num):
+            result.append(resized_img[column_step * row:o_height +
+                                      column_step * row, row_step *
+                                      column:o_width + row_step * column])
+    return result
+
+
+def resize(array, resize_info, interpolation=cv2.INTER_NEAREST):
+    """ Resizes the array according to resize_info.
+        resize_info can be a tuple (dual) or a float number
+        to determine output shape or resizing ratio respectively.
+    """
+    if isinstance(resize_info, tuple):
+        result = cv2.resize(src=array,
+                            dsize=(resize_info[1], resize_info[0]),
+                            interpolation=interpolation)
+    else:
+        result = cv2.resize(src=array,
+                            dsize=(int(array.shape[1] * resize_info),
+                                   int(array.shape[0] * resize_info)),
+                            interpolation=interpolation)
+    if len(result.shape) == 2:
+        result = np.expand_dims(result, -1)
+    return result
+
+
 class DatasetGenerator(Sequence):
     """Abstract iterator for looping over elements of a dataset .
 
@@ -75,54 +122,169 @@ class DatasetGenerator(Sequence):
             it reaches the end of the dataset.
         shuffle: Boolean. Whether to shuffle the order of the batches at the beginning of the
             training.
-        output_shape: size of generated images and labels.
+        shape: size of generated images and labels.
         data_type: data type of features.
         label_type: Types of labels to be returned.
     """
     def __init__(self,
-                 table_address,
+                 table_address="./utils/labels.csv",
+                 dataset_name=None,
+                 feature_types=None,
+                 label_types=None,
+                 class_ids='all',
+                 shape=(512, 512),
+                 float_type='float32',
+                 focal_length=None,
+                 split=True,
+                 max_split=3,
                  usage='train',
                  usage_range=(0, 1),
                  batch_size=1,
                  repeater=True,
-                 shuffle=True,
-                 output_shape=(480, 640),
-                 data_type='float32',
-                 feature_types=['image'],
-                 label_types=['segmentation'],
-                 dataset_name=None,
-                 class_ids=COMMON_LABEL_IDS.copy()):
-        self.usage = usage
-        self.usage_range = usage_range
-        self.batch_size = batch_size
-        self.repeater = repeater
-        self.shuffle = shuffle
-        self.output_shape = output_shape
-        self.data_type = data_type
+                 shuffle=True):
+        self.label_table = self.load_label_table(table_address)
+        self.dataset_name = dataset_name
         self.feature_types = feature_types
         self.label_types = label_types
-        self.dataset_name = dataset_name
-        self.dataset = self.data_frame_creator()
-        self.start_index = np.int32(
-            np.floor(self.usage_range[0] * (self.dataset.shape[0] - 1)))
-        self.end_index = np.int32(
-            np.floor(self.usage_range[1] * (self.dataset.shape[0] - 1)))
-        self.index = self.start_index
-        self.label_table = self.load_label_table(table_address)
         self.class_ids = self.available_classes(
         ) if class_ids is 'all' else class_ids
+        self.shape = shape
+        self.float_type = float_type
+        self.focal_length = focal_length
+        self.split = split
+        self.max_split = max_split
 
-        if not isinstance(self.feature_types, list):
-            raise NameError('feature_types should be a list')
-        if not isinstance(self.label_types, list):
-            raise NameError('label_types should be a list')
-        diff = set(feature_types) - set(label_types)
-        self.data_list = label_types + list(diff)
+        self.batch_size = batch_size
+        self.repeater = repeater
+        self.dataset = self.data_frame_creator(usage, shuffle)
+        #####################################################################
+        self.data_list = []
+        for cat in self.available_categories:
+            if cat in feature_types + label_types:
+                self.data_list.append(cat)
 
-    def data_frame_creator(self):
+        for cat in self.feature_types + self.label_types:
+            try:
+                if not cat in self.available_categories:
+                    raise NameError('InvalidCategory')
+            except NameError:
+                print("Oops! This data category (" + cat + ") is not available in "
+                      + "this dataset or this data generator does not support it :(")
+
+        self.data_buffer = {key: [] for key in self.data_list}
+        self.data_history = {key: None for key in self.data_list}
+        self.indexes = self.determine_indexes(usage_range)
+        #####################################################################
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self.next()
+
+    def __len__(self):
+        return np.int(
+            np.ceil(self.indexes['end'] -
+                    self.indexes['start'] / self.batch_size))
+
+    def __getitem__(self, idx):
+        return self.next()
+
+    def data_frame_creator(self, usage, shuffle):  #pylint: disable=unused-argument
         """Pandas dataFrame for addresses of images and corresponding labels"""
-
         return pd.DataFrame()
+
+    def load_data(self, data_type, index, resize_info=1):
+        """Loads requested data from dataset and does some preprocessing:
+            1. resizes arrayes
+            2. generates coplex data from raw data (like semantic depth from semantic segmentation)
+        """
+        if data_type is "focal_length":
+            focal_length = self.dataset.FOCAL_LENGTH[index]
+            return focal_length
+
+        if data_type is "image":
+            image = imread(self.dataset.RGB[index],
+                           plugin='matplotlib')[:, :, :3]
+            image = resize(image, resize_info)
+            if self.float_type is 'float32':
+                image = img_as_float32(image)
+            return image
+
+        if data_type is "segmentation" or data_type is "semantic_depth":
+            array = img_as_ubyte(
+                imread(self.dataset.SEGMENTATION[index],
+                       plugin='matplotlib')[:, :, :3])
+            array = resize(array, resize_info)
+            segmentation = one_hot(self.label_table,
+                                   array,
+                                   class_ids=self.class_ids,
+                                   dataset_name=self.dataset_name)
+            if len(segmentation.shape) == 2:
+                segmentation = np.expand_dims(segmentation, -1)
+            self.data_history["segmentation"] = segmentation
+            if data_type is "segmentation":
+                return segmentation
+
+        if data_type is "depth" or data_type is "semantic_depth":
+            depth = imread(self.dataset.DEPTH[index], plugin='pil')
+            depth = resize(depth, resize_info)
+            depth = np.array(
+                (depth[:, :, 0] + depth[:, :, 1] * 256.0 +
+                 depth[:, :, 2] * 256 * 256.0) / ((256 * 256 * 256) - 1),
+                dtype=np.float32) * 1000
+            if self.float_type is 'float32':
+                depth = img_as_float32(depth)
+            if len(depth.shape) == 2:
+                depth = np.expand_dims(depth, -1)
+            self.data_history["depth"] = depth
+            if data_type is "depth":
+                return depth
+
+        if data_type is "sparse_segmentation":
+            array = img_as_ubyte(
+                imread(self.dataset.SEGMENTATION[index],
+                       plugin='matplotlib')[:, :, :3])
+            array = resize(array, resize_info)
+            return sparse(self.label_table,
+                          array,
+                          class_ids=self.class_ids,
+                          dataset_name=self.dataset_name)
+
+        if data_type is "semantic_depth":
+            semantic_depth_array = self.data_history[
+                "segmentation"] * self.data_history["depth"]
+            ######
+            # semantic_depth_array = np.rollaxis(semantic_depth_array, -1, 0)
+            # semantic_depth = []
+            # for array in semantic_depth_array:
+            #     semantic_depth.append(np.expand_dims(array, -1))
+            #####
+            semantic_depth = semantic_depth_array
+            return semantic_depth
+
+    def determine_indexes(self, usage_range):
+        """ Calculates and returns start and end indexes of the generator.
+            Also initialize the current index.
+        """
+        if self.split is True:
+            image = self.load_data('image', 0)
+            split_coefficient = len(
+                resize_and_split(image, self.shape, self.max_split))
+        else:
+            split_coefficient = 1
+        start_index = np.int32(
+            np.floor(usage_range[0] * (self.dataset.shape[0] - 1) *
+                     split_coefficient))
+        end_index = np.int32(
+            np.floor(usage_range[1] * (self.dataset.shape[0] - 1) *
+                     split_coefficient))
+        return {
+            'start': start_index,
+            'end': end_index,
+            'current': start_index,
+            'split_coefficient': split_coefficient
+        }
 
     def load_label_table(self, table_address):
         """ Creates a pandas data frame (from a CSV file) having information
@@ -143,127 +305,57 @@ class DatasetGenerator(Sequence):
         return self.label_table[self.dataset_name].index[(
             self.label_table[self.dataset_name] != 'None').tolist()]
 
-    def __iter__(self):
-        return self
+    def next_data(self, data_type, index):
+        """Final stage for preprosessing of data
 
-    def __next__(self):
-        return self.next()
+           It determines wethere an array should be splitted and resized or simply resized
+           before adding it to data_buffer.
+        """
+        if len(self.data_buffer[data_type]) == 0:
+            if data_type is 'focal_length':
+                data = self.load_data(
+                    data_type, int(index / self.indexes['split_coefficient']))
+                self.data_buffer[data_type] = [data]
+            else:
+                resize_info = 1
+                if self.focal_length is not None:
+                    array_focal_length = self.load_data(
+                        'focal_length',
+                        int(index / self.indexes['split_coefficient']))
+                    resize_info = self.focal_length / array_focal_length
+                elif self.split is False:
+                    resize_info = self.shape
 
-    def __len__(self):
-        return np.int(np.ceil(self.end_index - self.start_index / self.batch_size))
+                image = self.load_data(
+                    data_type, int(index / self.indexes['split_coefficient']),
+                    resize_info)
 
-    def __getitem__(self, idx):
-        return self.next()
+                if self.split is True:
+                    self.data_buffer[data_type] = resize_and_split(
+                        image, self.shape, self.max_split)
+                else:
+                    self.data_buffer[data_type] = [image]
 
-    def resize(self, array):
-        return cv2.resize(src=array,
-                          dsize=(self.output_shape[1], self.output_shape[0]),
-                          interpolation=cv2.INTER_NEAREST)
+        return self.data_buffer[data_type].pop(0)
 
     def next(self):
         """Retrieve the next pairs from the dataset"""
 
-        if self.index + self.batch_size > self.end_index:
+        if self.indexes['current'] + self.batch_size > self.indexes['end']:
             if not self.repeater:
                 raise StopIteration
-            else:
-                self.index = self.start_index
-        self.index = self.index + self.batch_size
+            self.indexes['current'] = self.indexes['start']
+        self.indexes['current'] = self.indexes['current'] + self.batch_size
 
         data_dict = dict()
 
-        if 'image' in self.data_list:
-
-            image = imread(self.dataset.RGB[0], plugin='matplotlib')[:, :, :3]
-
-            image = np.array([
-                self.resize(imread(self.dataset.RGB[i],
-                                   plugin='matplotlib')[:, :, :3])
-                for i in range(self.index - self.batch_size, self.index)
+        for data_type in self.data_list:
+            self.data_history[data_type] = None
+            data_dict[data_type] = np.array([
+                self.next_data(data_type, i)
+                for i in range(self.indexes['current'] -
+                               self.batch_size, self.indexes['current'])
             ])
-
-            if self.data_type is 'float32':
-                image = img_as_float32(image)
-            data_dict['image'] = image
-
-        if 'segmentation' in self.data_list:
-            segmentation = np.array([
-                one_hot(self.label_table,
-                        img_as_ubyte(
-                            self.resize(imread(self.dataset.SEGMENTATION[i],
-                                              plugin='matplotlib')[:, :, :3])),
-                        class_ids=self.class_ids,
-                        dataset_name=self.dataset_name)
-                for i in range(self.index - self.batch_size, self.index)
-            ])
-            if self.data_type is 'float32':
-                segmentation = np.array(segmentation, dtype=np.float32)
-            data_dict['segmentation'] = segmentation
-
-        if 'sparse_segmentation' in self.data_list:
-            sparse_segmentation = np.array([
-                sparse(self.label_table,
-                       img_as_ubyte(
-                           self.resize(imread(self.dataset.SEGMENTATION[i],
-                                             plugin='matplotlib')[:, :, :3])),
-                       class_ids=self.class_ids,
-                       dataset_name=self.dataset_name)
-                for i in range(self.index - self.batch_size, self.index)
-            ])
-            data_dict['sparse_segmentation'] = sparse_segmentation
-
-        if 'depth' in self.data_list:
-            depth = np.array([
-                self.resize(imread(self.dataset.DEPTH[i], plugin='pil'))
-                for i in range(self.index - self.batch_size, self.index)
-            ])
-
-            # TODO: general case?
-            depth = np.array(
-                (depth[:, :, :, 0] + depth[:, :, :, 1] * 256.0 +
-                 depth[:, :, :, 2] * 256 * 256.0) / ((256 * 256 * 256) - 1),
-                dtype=np.float32) * 1000
-            depth = np.expand_dims(depth, -1)
-
-            data_dict['depth'] = depth
-
-        if 'semantic_depth' in self.data_list:
-
-            try:
-                depth
-            except NameError:
-                depth = np.array([
-                    self.resize(imread(self.dataset.DEPTH[i], plugin='pil'))
-                    for i in range(self.index - self.batch_size, self.index)
-                ])
-
-                # TODO: general case?
-                depth = np.array(
-                    (depth[:, :, :, 0] + depth[:, :, :, 1] * 256.0 +
-                     depth[:, :, :, 2] * 256 * 256.0) /
-                    ((256 * 256 * 256) - 1),
-                    dtype=np.float32) * 1000
-                depth = np.expand_dims(depth, -1)
-
-            semantic_depth = np.array([
-                one_hot(self.label_table,
-                        img_as_ubyte(
-                            self.resize(imread(self.dataset.SEGMENTATION[i],
-                                              plugin='matplotlib')[:, :, :3])),
-                        class_ids=self.class_ids,
-                        dataset_name=self.dataset_name)
-                for i in range(self.index - self.batch_size, self.index)
-            ])
-            semantic_depth_array = segmentation * depth
-            ######
-            # semantic_depth_array = np.rollaxis(semantic_depth_array, -1, 0)
-            # semantic_depth = []
-            # for array in semantic_depth_array:
-            #     semantic_depth.append(np.expand_dims(array, -1))
-            #####
-            semantic_depth = semantic_depth_array
-
-            data_dict['semantic_depth'] = semantic_depth
 
         feature_list = []
         for feature in self.feature_types:
@@ -283,10 +375,13 @@ class SynthiaSf(DatasetGenerator):
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
-        self.max_distance = 1000
+        self.available_categories = [
+            'focal_length', 'image', 'segmentation', 'depth',
+            'sparse_segmentation', 'semantic_depth'
+        ]
         super().__init__(**kwargs)
 
-    def data_frame_creator(self):
+    def data_frame_creator(self, usage, shuffle):
         """ pandas dataFrame for addresses of rgb, depth and segmentation"""
         sequence_folder = [
             '/SEQ1', '/SEQ2', '/SEQ3', '/SEQ4', '/SEQ5', '/SEQ6'
@@ -322,13 +417,19 @@ class SynthiaSf(DatasetGenerator):
             for segmentation in os.listdir(segmentation_d)
         ]
 
+        focal_length = [
+            847.630211643  # from dataset README.txt
+            for _ in range(len(rgb_data))
+        ]
+
         dataset = {
             'RGB': rgb_data,
             'DEPTH': depth_data,
-            'SEGMENTATION': segmentation_data
+            'SEGMENTATION': segmentation_data,
+            'FOCAL_LENGTH': focal_length
         }
 
-        if self.shuffle:
+        if shuffle:
             return pd.DataFrame(dataset).sample(
                 frac=1, random_state=123).reset_index(drop=True)
 
@@ -410,13 +511,13 @@ class VIPER(DatasetGenerator):
         self.dataset_dir = dataset_dir
         super().__init__(**kwargs)
 
-    def data_frame_creator(self):
+    def data_frame_creator(self, usage, shuffle):
         """Pandas dataFrame for addresses of images and corresponding labels"""
 
-        if self.usage == 'train':
+        if usage == 'train':
             main_folder = '/train'
 
-        elif self.usage == 'validation':
+        elif usage == 'validation':
             main_folder = '/val'
 
         else:
@@ -452,7 +553,7 @@ class VIPER(DatasetGenerator):
             'INSTANCE': inst_dir_list
         }
 
-        if self.shuffle:
+        if shuffle:
             return pd.DataFrame(dataset).sample(
                 frac=1, random_state=123).reset_index(drop=True)
         return pd.DataFrame(dataset)
@@ -465,12 +566,12 @@ class MAPILLARY(DatasetGenerator):
         self.dataset_dir = dataset_dir
         super().__init__(**kwargs)
 
-    def data_frame_creator(self):
+    def data_frame_creator(self, usage, shuffle):
         """Pandas dataFrame for addresses of images and corresponding labels"""
-        if self.usage == 'train':
+        if usage == 'train':
             main_folder = '/training'
 
-        elif self.usage == 'validation':
+        elif usage == 'validation':
             main_folder = '/validation'
 
         else:
@@ -500,7 +601,7 @@ class MAPILLARY(DatasetGenerator):
             'INSTANCE': inst_dir_list
         }
 
-        if self.shuffle:
+        if shuffle:
             return pd.DataFrame(dataset).sample(
                 frac=1, random_state=123).reset_index(drop=True)
         return pd.DataFrame(dataset)
@@ -513,13 +614,13 @@ class CITYSCAPES(DatasetGenerator):
         self.dataset_dir = dataset_dir
         super().__init__(**kwargs)
 
-    def data_frame_creator(self):
+    def data_frame_creator(self, usage, shuffle):
         """Pandas dataFrame for addresses of images and corresponding labels"""
 
-        if self.usage == 'train':
+        if usage == 'train':
             main_folder = '/train'
 
-        elif self.usage == 'validation':
+        elif usage == 'validation':
             main_folder = '/val'
 
         else:
@@ -572,7 +673,65 @@ class CITYSCAPES(DatasetGenerator):
             'INSTANCE': inst_dir_list
         }
 
-        if self.shuffle:
+        if shuffle:
             return pd.DataFrame(dataset).sample(
                 frac=1, random_state=123).reset_index(drop=True)
         return pd.DataFrame(dataset)
+
+
+class Lyft(DatasetGenerator):
+    """Iterator for looping over elements of Lyft."""
+    def __init__(self, dataset_dir, **kwargs):
+
+        self.dataset_dir = dataset_dir
+        self.available_categories = [
+            'focal_length',
+            'image',
+            'depth',
+        ]
+        super().__init__(**kwargs)
+
+    def data_frame_creator(self, usage, shuffle):
+        """Loads Lyft's SDK"""
+        level5data = LyftDataset(data_path=self.dataset_dir,
+                                 json_path=self.dataset_dir + '/v1.02-train',
+                                 verbose=False)
+        setattr(level5data, 'shape', [int(len(level5data.sample) * 7)])
+        return level5data
+
+    def load_data(self, data_type, index, resize_info=1):
+        sample_index = int(index / 7)
+        # 'CAM_FRONT_ZOOMED' is removed because of different size and different focal length
+        channel = ('CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT', 'CAM_FRONT',
+                   'CAM_FRONT_LEFT', 'CAM_FRONT_RIGHT')[index % 7]
+        explorer = LyftDatasetExplorer(self.dataset)
+        lidar_token = self.dataset.sample[sample_index]['data']['LIDAR_TOP']
+        cam_token = self.dataset.sample[sample_index]['data'][channel]
+        sample_token = self.dataset.sample[sample_index]['token']
+        points, coloring, image = explorer.map_pointcloud_to_image(
+            lidar_token, cam_token)
+
+        if data_type is "focal_length":
+            for data in self.dataset.sample_data:
+                if data['sample_token'] == sample_token and data[
+                        'channel'] == channel:
+                    calibrated_sensor_token = data['calibrated_sensor_token']
+
+            for calibation_data in self.dataset.calibrated_sensor:
+                if calibation_data['token'] == calibrated_sensor_token:
+                    focal_length = calibation_data['camera_intrinsic'][0][0]
+            return focal_length
+
+        if data_type is "image":
+            return resize(np.array(image), resize_info)
+
+        if data_type is "depth":
+            depth = np.zeros(np.array(image).shape[:2])  # pylint: disable=E1136
+            for i, color in enumerate(coloring):
+                depth[int(np.floor(points[1, :])[i]),
+                      int(np.floor(points[0, :])[i])] = color
+
+            if len(depth.shape) == 2:
+                depth = np.expand_dims(depth, -1)
+
+            return resize(depth, resize_info)
