@@ -132,7 +132,7 @@ class DatasetGenerator(Sequence):
                  feature_types=None,
                  label_types=None,
                  class_ids='all',
-                 shape=(512, 512),
+                 output_shape=(512, 512),
                  float_type='float32',
                  focal_length=None,
                  split=True,
@@ -148,7 +148,7 @@ class DatasetGenerator(Sequence):
         self.label_types = label_types
         self.class_ids = self.available_classes(
         ) if class_ids is 'all' else class_ids
-        self.shape = shape
+        self.output_shape = output_shape
         self.float_type = float_type
         self.focal_length = focal_length
         self.split = split
@@ -184,8 +184,8 @@ class DatasetGenerator(Sequence):
 
     def __len__(self):
         return np.int(
-            np.ceil(self.indexes['end'] -
-                    self.indexes['start'] / self.batch_size))
+            np.ceil((self.indexes['end'] - self.indexes['start']) /
+                    self.batch_size))
 
     def __getitem__(self, idx):
         return self.next()
@@ -270,7 +270,7 @@ class DatasetGenerator(Sequence):
         if self.split is True:
             image = self.load_data('image', 0)
             split_coefficient = len(
-                resize_and_split(image, self.shape, self.max_split))
+                resize_and_split(image, self.output_shape, self.max_split))
         else:
             split_coefficient = 1
         start_index = np.int32(
@@ -324,7 +324,7 @@ class DatasetGenerator(Sequence):
                         int(index / self.indexes['split_coefficient']))
                     resize_info = self.focal_length / array_focal_length
                 elif self.split is False:
-                    resize_info = self.shape
+                    resize_info = self.output_shape
 
                 image = self.load_data(
                     data_type, int(index / self.indexes['split_coefficient']),
@@ -332,7 +332,7 @@ class DatasetGenerator(Sequence):
 
                 if self.split is True:
                     self.data_buffer[data_type] = resize_and_split(
-                        image, self.shape, self.max_split)
+                        image, self.output_shape, self.max_split)
                 else:
                     self.data_buffer[data_type] = [image]
 
