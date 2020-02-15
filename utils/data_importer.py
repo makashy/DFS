@@ -222,6 +222,8 @@ class DatasetGenerator(Sequence):
                                    dataset_name=self.dataset_name)
             if len(segmentation.shape) == 2:
                 segmentation = np.expand_dims(segmentation, -1)
+            if self.float_type is 'float32':
+                segmentation = np.array(segmentation, dtype=np.float32)
             self.data_history["segmentation"] = segmentation
             if data_type is "segmentation":
                 return segmentation
