@@ -51,7 +51,9 @@ def draw_samples(feature_list,
     '''
     n_rows = 3
     n_columns = max(len(feature_types), len(label_types))
-    plt.figure(figsize=(n_columns * 5, n_rows * 5))
+    min_side = min(feature_list[0][0].shape[:2])
+    plt.figure(figsize=(n_columns * 5 * feature_list[0][0].shape[1] / min_side,
+                        n_rows * 5 * feature_list[0][0].shape[0] / min_side))
     plt.set_cmap(cmap)
 
     for i, title in enumerate(feature_types):
@@ -64,7 +66,7 @@ def draw_samples(feature_list,
 
     if len(predict_types) > 0:
         for i, title in enumerate(predict_types):
-            plt.subplot(n_rows, n_columns, n_columns + i + 1)
+            plt.subplot(n_rows, n_columns, 2 * n_columns + i + 1)
             draw(predict_list[i][sample_num], title, class_name, class_index)
 
 
