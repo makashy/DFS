@@ -21,16 +21,16 @@ class VisualLogger(tf.keras.callbacks.Callback):
         validation_dataset: a DatasetGenerator object.
         index: index of the batch to be used for examining the model
     """
-    def __init__(self, log_dir, validation_dataset, index=0):
+    def __init__(self, log_dir, validation_dataset, index=None):
         super().__init__()
         self.log_dir = log_dir
 
         if 'visual_log.pkl' in os.listdir(log_dir):
-            self.result_dataframe = pd.read_pickle(log_dir + "visual_log.pkl")
+            self.result_dataframe = pd.read_pickle(log_dir + "/visual_log.pkl")
         else:
             self.result_dataframe = pd.DataFrame()
-
-        validation_dataset.index = index
+        validation_dataset.indexes['current'] = validation_dataset.indexes[
+            'start'] if index is None else index
         preview = iter(validation_dataset)
         self.feature_list, self.label_list = next(preview)
 
@@ -43,7 +43,7 @@ class VisualLogger(tf.keras.callbacks.Callback):
         """
         predict = self.model.predict(self.feature_list, steps=1)
         self.result_dataframe['predict ' + str(epoch)] = [predict]
-        self.result_dataframe.to_pickle(self.log_dir + 'visual_log.pkl')
+        self.result_dataframe.to_pickle(self.log_dir + '/visual_log.pkl')
 
 
 class MetricLogger(tf.keras.callbacks.Callback):
@@ -57,7 +57,7 @@ class MetricLogger(tf.keras.callbacks.Callback):
         self.log_dir = log_dir
 
         if 'metric_log.pkl' in os.listdir(log_dir):
-            self.metric_dataframe = pd.read_pickle(log_dir + "metric_log.pkl")
+            self.metric_dataframe = pd.read_pickle(log_dir + "/metric_log.pkl")
         else:
             self.metric_dataframe = pd.DataFrame()
 
@@ -75,4 +75,4 @@ class MetricLogger(tf.keras.callbacks.Callback):
             time.time(),
         ] + list(logs.values()),
                                                     dtype=np.float64)
-        self.metric_dataframe.to_pickle(self.log_dir + 'metric_log.pkl')
+        self.metric_dataframe.to_pickle(self.log_dir + '/metric_log.pkl')
