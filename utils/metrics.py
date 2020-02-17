@@ -285,9 +285,10 @@ class DeltaThreshold(tf.keras.losses.Loss):
         """
         aeca = tf.cast(y_true > self.minimum_y_true, tf.float32)
         return tf.math.count_nonzero(
-            (tf.maximum(y_true / (self.smooth + y_pred), y_pred /
-                        (self.smooth + y_true)) < self.threshold**self.i) *
-            aeca) / tf.math.count_nonzero(y_true * aeca)
+            tf.cast(
+                tf.maximum(y_true / (self.smooth + y_pred), y_pred /
+                           (self.smooth + y_true)) < self.threshold**self.i,
+                tf.float32) * aeca) / tf.math.count_nonzero(y_true * aeca)
 
 
 class SILog(tf.keras.losses.Loss):
