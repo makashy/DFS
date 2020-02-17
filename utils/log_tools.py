@@ -26,16 +26,16 @@ class VisualLogger(tf.keras.callbacks.Callback):
         self.log_dir = log_dir
 
         if 'visual_log.pkl' in os.listdir(log_dir):
-            self.result_dataframe = pd.read_pickle(log_dir + "/visual_log.pkl")
+            self.result_dataframe = pd.read_pickle(log_dir + "visual_log.pkl")
         else:
             self.result_dataframe = pd.DataFrame()
 
-            validation_dataset.index = index
-            preview = iter(validation_dataset)
-            self.feature_list, self.label_list = next(preview)
+        validation_dataset.index = index
+        preview = iter(validation_dataset)
+        self.feature_list, self.label_list = next(preview)
 
-            self.result_dataframe['feature_list'] = [self.feature_list]
-            self.result_dataframe['label_list'] = [self.label_list]
+        self.result_dataframe['feature_list'] = [self.feature_list]
+        self.result_dataframe['label_list'] = [self.label_list]
 
     def on_epoch_end(self, epoch, logs):
         """Called at the end of an epoch.
@@ -57,7 +57,7 @@ class MetricLogger(tf.keras.callbacks.Callback):
         self.log_dir = log_dir
 
         if 'metric_log.pkl' in os.listdir(log_dir):
-            self.metric_dataframe = pd.read_pickle(log_dir + "/metric_log.pkl")
+            self.metric_dataframe = pd.read_pickle(log_dir + "metric_log.pkl")
         else:
             self.metric_dataframe = pd.DataFrame()
 
