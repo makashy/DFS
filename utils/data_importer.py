@@ -30,7 +30,7 @@ def label_slicer(raw_label, class_color):
 def one_hot(label_table,
             raw_label,
             class_ids=COMMON_LABEL_IDS.copy(),
-            dataset_name='SYNTHIA_SF'):
+            dataset_name='SynthiaSf'):
     """ Creates a one-hot label for a group of segmentation classes from the given raw label """
     one_hot_label = np.ndarray(shape=(raw_label.shape[0], raw_label.shape[1],
                                       len(class_ids)),
@@ -44,7 +44,7 @@ def one_hot(label_table,
 def sparse(label_table,
            raw_label,
            class_ids=COMMON_LABEL_IDS.copy(),
-           dataset_name='SYNTHIA_SF'):
+           dataset_name='SynthiaSf'):
     """ Creates a sparse label for a group of segmentation classes from the given raw label """
     label = np.zeros(shape=(raw_label.shape[0], raw_label.shape[1], 1),
                      dtype=np.uint8)
@@ -438,7 +438,7 @@ class SynthiaSf(DatasetGenerator):
         return pd.DataFrame(dataset)
 
 
-class NYU:
+class NyuDepth:
     """Iterator for looping over elements of NYU Depth Dataset V2 backwards."""
     def __init__(self,
                  NYU_Depth_Dataset_V2_address,
@@ -506,8 +506,8 @@ class NYU:
         return features, labels
 
 
-class VIPER(DatasetGenerator):
-    """Iterator for looping over elements of a VIPER(PlayForBenchmark) dataset ."""
+class PlayingForBenchmarks(DatasetGenerator):
+    """Iterator for looping over elements of a Playing for Benchmarks dataset ."""
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
@@ -561,8 +561,8 @@ class VIPER(DatasetGenerator):
         return pd.DataFrame(dataset)
 
 
-class MAPILLARY(DatasetGenerator):
-    """Iterator for looping over elements of a MAPILLARY dataset ."""
+class MapillaryVistas(DatasetGenerator):
+    """Iterator for looping over elements of a Mapillary Vistas dataset ."""
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
@@ -609,8 +609,8 @@ class MAPILLARY(DatasetGenerator):
         return pd.DataFrame(dataset)
 
 
-class CITYSCAPES(DatasetGenerator):
-    """Iterator for looping over elements of a CITYSCAPES dataset ."""
+class Cityscapes(DatasetGenerator):
+    """Iterator for looping over elements of a Cityscapes dataset ."""
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
@@ -682,7 +682,7 @@ class CITYSCAPES(DatasetGenerator):
 
 
 class Lyft(DatasetGenerator):
-    """Iterator for looping over elements of Lyft."""
+    """Iterator for looping over elements of Lyft Level 5 AV Dataset."""
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
@@ -746,3 +746,15 @@ class Lyft(DatasetGenerator):
                 depth = np.expand_dims(depth, -1)
 
             return depth
+
+
+class Virtual_Kitti:
+    pass
+
+
+class Kitti:
+    pass
+
+
+class Presil:
+    pass
