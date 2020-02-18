@@ -705,7 +705,7 @@ class Lyft(DatasetGenerator):
         sample_index = int(index / 7)
         # 'CAM_FRONT_ZOOMED' is removed because of different size and different focal length
         channel = ('CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT', 'CAM_FRONT',
-                   'CAM_FRONT_LEFT', 'CAM_FRONT_RIGHT')[index % 7]
+                   'CAM_FRONT_LEFT', 'CAM_FRONT_RIGHT')[index % 6]
         explorer = LyftDatasetExplorer(self.dataset)
         lidar_token = self.dataset.sample[sample_index]['data']['LIDAR_TOP']
         cam_token = self.dataset.sample[sample_index]['data'][channel]
@@ -725,7 +725,11 @@ class Lyft(DatasetGenerator):
             return focal_length
 
         if data_type is "image":
-            return resize(np.array(image), resize_info)
+            image = np.array(image)
+            image = resize(image, resize_info)
+            if self.float_type is 'float32':
+                image = img_as_float32(image)
+            return image
 
         if data_type is "depth":
             depth = np.zeros(np.array(image).shape[:2])  # pylint: disable=E1136
@@ -733,7 +737,12 @@ class Lyft(DatasetGenerator):
                 depth[int(np.floor(points[1, :])[i]),
                       int(np.floor(points[0, :])[i])] = color
 
+            depth = resize(depth, resize_info)
+
+            if self.float_type is 'float32':
+                depth = img_as_float32(depth)
+
             if len(depth.shape) == 2:
                 depth = np.expand_dims(depth, -1)
 
-            return resize(depth, resize_info)
+            return depth
