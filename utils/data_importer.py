@@ -137,7 +137,7 @@ class DatasetGenerator(Sequence):
                  focal_length=None,
                  split=True,
                  max_split=3,
-                 usage='train',
+                 usage='training',
                  usage_range=(0, 1),
                  batch_size=1,
                  repeater=True,
@@ -516,7 +516,7 @@ class PlayingForBenchmarks(DatasetGenerator):
     def data_frame_creator(self, usage, shuffle):
         """Pandas dataFrame for addresses of images and corresponding labels"""
 
-        if usage == 'train':
+        if usage == 'training':
             main_folder = '/train'
 
         elif usage == 'validation':
@@ -570,7 +570,7 @@ class MapillaryVistas(DatasetGenerator):
 
     def data_frame_creator(self, usage, shuffle):
         """Pandas dataFrame for addresses of images and corresponding labels"""
-        if usage == 'train':
+        if usage == 'training':
             main_folder = '/training'
 
         elif usage == 'validation':
@@ -619,7 +619,7 @@ class Cityscapes(DatasetGenerator):
     def data_frame_creator(self, usage, shuffle):
         """Pandas dataFrame for addresses of images and corresponding labels"""
 
-        if usage == 'train':
+        if usage == 'training':
             main_folder = '/train'
 
         elif usage == 'validation':
