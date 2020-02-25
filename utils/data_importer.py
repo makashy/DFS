@@ -27,6 +27,26 @@ def label_slicer(raw_label, class_color):
            (raw_label[:, :, 2] == class_color[2])
 
 
+def load_label_table(table_address):
+    """ Creates a pandas data frame (from a CSV file) having information
+    about segmentation class colors """
+    label_table = pd.read_csv(table_address, index_col=0)
+    for dataset_name in label_table.columns[3:]:
+        color_list = label_table.loc[:, dataset_name]
+        for i, color in enumerate(color_list):
+            if color != 'None':
+                color_list[i] = np.fromstring(color_list[i][1:-1],
+                                              dtype=np.uint8,
+                                              sep=',')
+    return label_table
+
+def available_classes(label_table, dataset_name):
+    """Returns indexes of available classes in the dataset
+    """
+    return label_table[dataset_name].index[(
+        label_table[dataset_name] != 'None').tolist()]
+
+
 def one_hot(label_table,
             raw_label,
             class_ids=COMMON_LABEL_IDS.copy(),
@@ -142,12 +162,13 @@ class DatasetGenerator(Sequence):
                  batch_size=1,
                  repeater=True,
                  shuffle=True):
-        self.label_table = self.load_label_table(table_address)
+        self.label_table = load_label_table(table_address)
         self.dataset_name = dataset_name
         self.feature_types = feature_types
         self.label_types = label_types
-        self.class_ids = self.available_classes(
-        ) if class_ids is 'all' else class_ids
+        self.class_ids = available_classes(
+            self.label_table,
+            self.dataset_name) if class_ids is 'all' else class_ids
         self.output_shape = output_shape
         self.float_type = float_type
         self.focal_length = focal_length
@@ -287,25 +308,6 @@ class DatasetGenerator(Sequence):
             'current': start_index,
             'split_coefficient': split_coefficient
         }
-
-    def load_label_table(self, table_address):
-        """ Creates a pandas data frame (from a CSV file) having information
-        about segmentation class colors """
-        label_table = pd.read_csv(table_address, index_col=0)
-        for dataset_name in label_table.columns[3:]:
-            color_list = label_table.loc[:, dataset_name]
-            for i, color in enumerate(color_list):
-                if color != 'None':
-                    color_list[i] = np.fromstring(color_list[i][1:-1],
-                                                  dtype=np.uint8,
-                                                  sep=',')
-        return label_table
-
-    def available_classes(self):
-        """Returns indexes of available classes in the dataset
-        """
-        return self.label_table[self.dataset_name].index[(
-            self.label_table[self.dataset_name] != 'None').tolist()]
 
     def next_data(self, data_type, index):
         """Final stage for preprosessing of data
@@ -748,7 +750,7 @@ class Lyft(DatasetGenerator):
             return depth
 
 
-class Virtual_Kitti:
+class VirtualKitti:
     pass
 
 
