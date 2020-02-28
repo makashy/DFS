@@ -113,19 +113,54 @@ def resize_and_split(input_array, output_shape, max_split):
     return result
 
 
-def resize(array, resize_info, interpolation=cv2.INTER_NEAREST):
-    """ Resizes the array according to resize_info.
-        resize_info can be a tuple (dual) or a float number
+def crop_and_resize(array,
+                    resize_setting,
+                    crop_setting=False,
+                    interpolation=cv2.INTER_NEAREST):
+    """ Resizes and crops the array according to resize_setting and crop_setting
+
+        resize_setting can be a tuple (dual) or a float number
         to determine output shape or resizing ratio respectively.
     """
-    if isinstance(resize_info, tuple):
+    if crop_setting is not False:
+        assert crop_setting['vertical_alignment'] in [
+            'top', 'center', 'bottom'
+        ]
+        assert crop_setting['horizontal_alignment'] in [
+            'left', 'center', 'right'
+        ]
+
+        v_extra = array.shape[0] - crop_setting['vertical_residual']
+        if crop_setting['vertical_alignment'] == 'top':
+            v_first = 0
+            v_last = crop_setting['vertical_residual']
+        if crop_setting['vertical_alignment'] == 'center':
+            v_first = int(v_extra / 2)
+            v_last = int(v_extra / 2) + crop_setting['vertical_residual']
+        if crop_setting['vertical_alignment'] == 'bottom':
+            v_first = -crop_setting['vertical_residual']
+            v_last = None
+
+        h_extra = array.shape[1] - crop_setting['horizontal_residual']
+        if crop_setting['horizontal_alignment'] == 'left':
+            h_first = 0
+            h_last = crop_setting['horizontal_residual']
+        if crop_setting['horizontal_alignment'] == 'center':
+            h_first = int(h_extra / 2)
+            h_last = int(h_extra / 2) + crop_setting['horizontal_residual']
+        if crop_setting['horizontal_alignment'] == 'right':
+            h_first = -crop_setting['horizontal_residual']
+            h_last = None
+        array = array[v_first:v_last, h_first:h_last]
+
+    if isinstance(resize_setting, tuple):
         result = cv2.resize(src=array,
-                            dsize=(resize_info[1], resize_info[0]),
+                            dsize=(resize_setting[1], resize_setting[0]),
                             interpolation=interpolation)
     else:
         result = cv2.resize(src=array,
-                            dsize=(int(array.shape[1] * resize_info),
-                                   int(array.shape[0] * resize_info)),
+                            dsize=(int(array.shape[1] * resize_setting),
+                                   int(array.shape[0] * resize_setting)),
                             interpolation=interpolation)
     if len(result.shape) == 2:
         result = np.expand_dims(result, -1)
@@ -155,6 +190,7 @@ class DatasetGenerator(Sequence):
                  output_shape=(512, 512),
                  float_type='float32',
                  focal_length=None,
+                 crop_setting=False,
                  split=True,
                  max_split=3,
                  usage='training',
@@ -172,6 +208,7 @@ class DatasetGenerator(Sequence):
         self.output_shape = output_shape
         self.float_type = float_type
         self.focal_length = focal_length
+        self.crop_setting = crop_setting
         self.split = split
         self.max_split = max_split
 
@@ -215,10 +252,10 @@ class DatasetGenerator(Sequence):
         """Pandas dataFrame for addresses of images and corresponding labels"""
         return pd.DataFrame()
 
-    def load_data(self, data_type, index, resize_info=1):
+    def load_data(self, data_type, index, resize_setting=1):
         """Loads requested data from dataset and does some preprocessing:
             1. resizes arrayes
-            2. generates coplex data from raw data (like semantic depth from semantic segmentation)
+            2. generates complex data from raw data (like semantic depth from semantic segmentation)
         """
         if data_type is "focal_length":
             focal_length = self.dataset.FOCAL_LENGTH[index]
@@ -227,7 +264,7 @@ class DatasetGenerator(Sequence):
         if data_type is "image":
             image = imread(self.dataset.RGB[index],
                            plugin='matplotlib')[:, :, :3]
-            image = resize(image, resize_info)
+            image = crop_and_resize(image, resize_setting, self.crop_setting)
             if self.float_type is 'float32':
                 image = img_as_float32(image)
             return image
@@ -236,7 +273,7 @@ class DatasetGenerator(Sequence):
             array = img_as_ubyte(
                 imread(self.dataset.SEGMENTATION[index],
                        plugin='matplotlib')[:, :, :3])
-            array = resize(array, resize_info)
+            array = crop_and_resize(array, resize_setting, self.crop_setting)
             segmentation = one_hot(self.label_table,
                                    array,
                                    class_ids=self.class_ids,
@@ -250,12 +287,7 @@ class DatasetGenerator(Sequence):
                 return segmentation
 
         if data_type is "depth" or data_type is "semantic_depth":
-            depth = imread(self.dataset.DEPTH[index], plugin='pil')
-            depth = resize(depth, resize_info)
-            depth = np.array(
-                (depth[:, :, 0] + depth[:, :, 1] * 256.0 +
-                 depth[:, :, 2] * 256 * 256.0) / ((256 * 256 * 256) - 1),
-                dtype=np.float32) * 1000
+            depth = self.load_and_resize_depth(index, resize_setting)
             if self.float_type is 'float32':
                 depth = img_as_float32(depth)
             if len(depth.shape) == 2:
@@ -268,7 +300,7 @@ class DatasetGenerator(Sequence):
             array = img_as_ubyte(
                 imread(self.dataset.SEGMENTATION[index],
                        plugin='matplotlib')[:, :, :3])
-            array = resize(array, resize_info)
+            array = crop_and_resize(array, resize_setting, self.crop_setting)
             return sparse(self.label_table,
                           array,
                           class_ids=self.class_ids,
@@ -321,18 +353,18 @@ class DatasetGenerator(Sequence):
                     data_type, int(index / self.indexes['split_coefficient']))
                 self.data_buffer[data_type] = [data]
             else:
-                resize_info = 1
+                resize_setting = 1
                 if self.focal_length is not None:
                     array_focal_length = self.load_data(
                         'focal_length',
                         int(index / self.indexes['split_coefficient']))
-                    resize_info = self.focal_length / array_focal_length
+                    resize_setting = self.focal_length / array_focal_length
                 elif self.split is False:
-                    resize_info = self.output_shape
+                    resize_setting = self.output_shape
 
                 image = self.load_data(
                     data_type, int(index / self.indexes['split_coefficient']),
-                    resize_info)
+                    resize_setting)
 
                 if self.split is True:
                     self.data_buffer[data_type] = resize_and_split(
@@ -439,6 +471,16 @@ class SynthiaSf(DatasetGenerator):
 
         return pd.DataFrame(dataset)
 
+    def load_and_resize_depth(self, index, resize_setting):
+        """loads depth data, converts unit (to meter) and resizes the array"""
+        depth = imread(self.dataset.DEPTH[index], plugin='pil')
+        depth = crop_and_resize(depth, resize_setting, self.crop_setting)
+        depth = np.array(
+            (depth[:, :, 0] + depth[:, :, 1] * 256.0 +
+             depth[:, :, 2] * 256 * 256.0) / ((256 * 256 * 256) - 1),
+            dtype=np.float32) * 1000
+        return depth
+
 
 class NyuDepth:
     """Iterator for looping over elements of NYU Depth Dataset V2 backwards."""
@@ -508,8 +550,8 @@ class NyuDepth:
         return features, labels
 
 
-class PlayingForBenchmarks(DatasetGenerator):
-    """Iterator for looping over elements of a Playing for Benchmarks dataset ."""
+class Viper(DatasetGenerator):
+    """Iterator for looping over elements of a VIPER dataset ."""
     def __init__(self, dataset_dir, **kwargs):
 
         self.dataset_dir = dataset_dir
@@ -703,7 +745,7 @@ class Lyft(DatasetGenerator):
         setattr(level5data, 'shape', [int(len(level5data.sample) * 7)])
         return level5data
 
-    def load_data(self, data_type, index, resize_info=1):
+    def load_data(self, data_type, index, resize_setting=1):
         sample_index = int(index / 7)
         # 'CAM_FRONT_ZOOMED' is removed because of different size and different focal length
         channel = ('CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT', 'CAM_FRONT',
@@ -728,7 +770,7 @@ class Lyft(DatasetGenerator):
 
         if data_type is "image":
             image = np.array(image)
-            image = resize(image, resize_info)
+            image = crop_and_resize(image, resize_setting, self.crop_setting)
             if self.float_type is 'float32':
                 image = img_as_float32(image)
             return image
@@ -739,7 +781,7 @@ class Lyft(DatasetGenerator):
                 depth[int(np.floor(points[1, :])[i]),
                       int(np.floor(points[0, :])[i])] = color
 
-            depth = resize(depth, resize_info)
+            depth = crop_and_resize(depth, resize_setting, self.crop_setting)
 
             if self.float_type is 'float32':
                 depth = img_as_float32(depth)
@@ -750,8 +792,77 @@ class Lyft(DatasetGenerator):
             return depth
 
 
-class VirtualKitti:
-    pass
+class VirtualKitti(DatasetGenerator):
+    """Iterator for looping over elements of Virtual KITTI 2 Dataset backwards."""
+    def __init__(self, dataset_dir, **kwargs):
+
+        self.dataset_dir = dataset_dir
+        self.available_categories = [
+            'focal_length', 'image', 'segmentation', 'depth',
+            'sparse_segmentation', 'semantic_depth'
+        ]
+        super().__init__(**kwargs)
+
+    def data_frame_creator(self, usage, shuffle):
+        """ pandas dataFrame for addresses of rgb, depth and segmentation"""
+
+        scene_list = [
+            self.dataset_dir + '/' + folder
+            for folder in os.listdir(self.dataset_dir)
+        ]
+        condition_list = [
+            scene + '/' + folder for scene in scene_list
+            for folder in os.listdir(scene)
+        ]
+        rgb_folders = [
+            condition + '/frames/rgb/' + cam for condition in condition_list
+            for cam in os.listdir(condition + '/frames/rgb/')
+        ]
+        depth_folders = [
+            condition + '/frames/depth/' + cam for condition in condition_list
+            for cam in os.listdir(condition + '/frames/depth/')
+        ]
+        segmentation_folders = [
+            condition + '/frames/classSegmentation/' + cam
+            for condition in condition_list
+            for cam in os.listdir(condition + '/frames/classSegmentation/')
+        ]
+        rgb_list = [
+            folder + '/' + rgb_name for folder in rgb_folders
+            for rgb_name in os.listdir(folder)
+        ]
+        depth_list = [
+            folder + '/' + depth_name for folder in depth_folders
+            for depth_name in os.listdir(folder)
+        ]
+        segmentation_list = [
+            folder + '/' + segmentation_name for folder in segmentation_folders
+            for segmentation_name in os.listdir(folder)
+        ]
+
+        focal_length = [
+            725.0087  # from dataset intrinsic.txt in each condition_list
+            for _ in range(len(rgb_list))
+        ]
+
+        dataset = {
+            'RGB': rgb_list,
+            'DEPTH': depth_list,
+            'SEGMENTATION': segmentation_list,
+            'FOCAL_LENGTH': focal_length
+        }
+
+        if shuffle:
+            return pd.DataFrame(dataset).sample(
+                frac=1, random_state=123).reset_index(drop=True)
+
+        return pd.DataFrame(dataset)
+
+    def load_and_resize_depth(self, index, resize_setting):
+        """loads depth data, converts unit (to meter) and resizes the array"""
+        depth = imread(self.dataset.DEPTH[index], plugin='pil')/100.0
+        depth = crop_and_resize(depth, resize_setting, self.crop_setting)
+        return depth
 
 
 class Kitti:

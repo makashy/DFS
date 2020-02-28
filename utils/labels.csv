@@ -1,76 +1,78 @@
-,name,macro_category,sub_category,MapillaryVistas,PlayingForBenchmarks,SynthiaSf,Cityscapes
-0,Bird,animal,-,"[165, 42, 42]",None,None,None
-1,Ground Animal,animal,-,"[0, 192, 0]",None,None,None
-2,Curb,construction,barrier,"[196, 196, 196]",None,None,None
-3,Fence,construction,barrier,"[190, 153, 153]","[190, 153, 153]","[190, 153, 153]","[190, 153, 153]"
-4,Guard Rail,construction,barrier,"[180, 165, 180]",None,None,"[180, 165, 180]"
-5,Barrier,construction,barrier,"[90, 120, 150]",None,None,None
-6,Wall,construction,barrier,"[102, 102, 156]",None,"[102, 102, 156]","[102, 102, 156]"
-7,Bike Lane,construction,flat,"[128, 64, 255]",None,None,None
-8,Crosswalk - Plain,construction,flat,"[140, 140, 200]",None,None,None
-9,Curb Cut,construction,flat,"[170, 170, 170]",None,None,None
-10,Parking,construction,flat,"[250, 170, 160]",None,None,"[250, 170, 160]"
-11,Pedestrian Area,construction,flat,"[96, 96, 96]",None,None,None
-12,Rail Track,construction,flat,"[230, 150, 140]","[230, 150, 140]",None,"[230, 150, 140]"
-13,Road,construction,flat,"[128, 64, 128]","[128, 64, 128]","[128, 64, 128]","[128, 64, 128]"
-14,Service Lane,construction,flat,"[110, 110, 110]",None,None,None
-15,Sidewalk,construction,flat,"[244, 35, 232]","[244, 35, 232]","[244, 35, 232]","[244, 35, 232]"
-16,Bridge,construction,structure,"[150, 100, 100]",None,None,"[150, 100, 100]"
-17,Building,construction,structure,"[70, 70, 70]","[70, 70, 70]","[70, 70, 70]","[70, 70, 70]"
-18,Tunnel,construction,structure,"[150, 120, 90]",None,None,"[150, 120, 90]"
-19,Person,human,-,"[220, 20, 60]","[220, 20, 60]","[220, 20, 60]","[220, 20, 60]"
-20,Bicyclist,human,rider,"[255, 0, 0]","[255, 0, 0]","[255, 0, 0]","[255, 0, 0]"
-21,Motorcyclist,human,rider,"[255, 0, 100]",None,None,None
-22,Other Rider,human,rider,"[255, 0, 200]",None,None,None
-23,Lane Marking - Crosswalk,marking,-,"[200, 128, 128]",None,None,None
-24,Lane Marking - General,marking,-,"[255, 255, 255]",None,"[157, 234, 50]",None
-25,Mountain,nature,-,"[64, 170, 64]",None,None,None
-26,Sand,nature,-,"[230, 160, 50]",None,None,None
-27,Sky,nature,-,"[70, 130, 180]","[70, 130, 180]","[70, 130, 180]","[70, 130, 180]"
-28,Snow,nature,-,"[190, 255, 255]",None,None,None
-29,Terrain,nature,-,"[152, 251, 152]","[152, 251, 152]","[152, 251, 152]","[152, 251, 152]"
-30,Vegetation,nature,-,"[107, 142, 35]","[35, 142, 35]","[107, 142, 35]","[107, 142, 35]"
-31,Water,nature,-,"[0, 170, 30]",None,None,None
-32,Banner,object,-,"[255, 255, 128]",None,None,None
-33,Bench,object,-,"[250, 0, 30]",None,None,None
-34,Bike Rack,object,-,"[100, 140, 180]",None,None,None
-35,Billboard,object,-,"[220, 220, 220]",None,None,None
-36,Catch Basin,object,-,"[220, 128, 128]",None,None,None
-37,CCTV Camera,object,-,"[222, 40, 40]",None,None,None
-38,Fire Hydrant,object,-,"[100, 170, 30]",None,None,None
-39,Junction Box,object,-,"[40, 40, 40]",None,None,None
-40,Mailbox,object,-,"[33, 33, 33]",None,None,None
-41,Manhole,object,-,"[100, 128, 160]",None,None,None
-42,Phone Booth,object,-,"[142, 0, 0]",None,None,None
-43,Pothole,object,-,"[70, 100, 150]",None,None,None
-44,Street Light,object,-,"[210, 170, 100]",None,None,None
-45,Pole,object,support,"[153, 153, 153]","[153, 153, 153]","[153, 153, 153]","[153, 153, 153]"
-46,Traffic Sign Frame,object,support,"[128, 128, 128]",None,None,None
-47,Utility Pole,object,support,"[0, 0, 80]",None,None,None
-48,Traffic Light,object,-,"[250, 170, 30]","[250, 170, 30]","[250, 170, 30]","[250, 170, 30]"
-49,Traffic Sign (Back),object,traffic-sign,"[192, 192, 192]",None,None,None
-50,Traffic Sign (Front),object,traffic-sign,"[220, 220, 0]","[220, 220, 0]","[220, 220, 0]","[220, 220, 0]"
-51,Trash Can,object,-,"[140, 140, 20]","[81, 0, 81]",None,None
-52,Bicycle,object,vehicle,"[119, 11, 32]","[119, 11, 32]","[119, 11, 32]","[119, 11, 32]"
-53,Boat,object,vehicle,"[150, 0, 255]","[50, 0, 90]",None,None
-54,Bus,object,vehicle,"[0, 60, 100]","[0, 60, 100]","[0, 60, 100]","[0, 60, 100]"
-55,Car,object,vehicle,"[0, 0, 142]","[0, 0, 142]","[0, 0, 142]","[0, 0, 142]"
-56,Caravan,object,vehicle,"[0, 0, 90]","[0, 0, 90]",None,"[0, 0, 90]"
-57,Motorcycle,object,vehicle,"[0, 0, 230]","[0, 0, 230]","[0, 0, 230]","[0, 0, 230]"
-58,On Rails,object,vehicle,"[0, 80, 100]","[0, 80, 100]","[0, 80, 100]","[0, 80, 100]"
-59,Other Vehicle,object,vehicle,"[128, 64, 64]",None,None,None
-60,Trailer,object,vehicle,"[0, 0, 110]",None,None,"[0, 0, 110]"
-61,Truck,object,vehicle,"[0, 0, 70]","[0, 0, 70]","[0, 0, 70]","[0, 0, 70]"
-62,Wheeled Slow,object,vehicle,"[0, 0, 192]",None,None,None
-63,Car Mount,void,-,"[32, 32, 32]",None,None,None
-64,Ego Vehicle,void,vehicle,"[120, 10, 10]",None,None,None
-65,Unlabeled,void,-,"[0, 0, 0]","[0, 0, 0] ","[0, 0, 0] ","[0, 0, 0] "
-66,ground,-,-,None,None,None,"[81, 0, 81]"
-67,dynamic ,-,-,None,"[111, 74, 0]",None,"[111, 74, 0]"
-68,plane,object,vehicle,None,"[0, 100, 100]",None,None
-69,trash ,object,-,None,"[81, 0, 21]",None,None
-70,chair ,object,-,None,"[168, 153, 153]",None,None
-71,firehydrant ,object,-,None,"[173, 153, 153]",None,None
-72,mobilebarrier ,object,-,None,"[180, 180, 100]",None,None
-73,billboard ,object,-,None,"[150, 20, 20]",None,None
-74,tree ,object,-,None,"[87, 182, 35]",None,None
+,name,macro_category,sub_category,MapillaryVistas,PlayingForBenchmarks,SynthiaSf,Cityscapes,VirtualKitti
+0,Bird,animal,-,"[165, 42, 42]",None,None,None,None
+1,Ground Animal,animal,-,"[0, 192, 0]",None,None,None,None
+2,Curb,construction,barrier,"[196, 196, 196]",None,None,None,None
+3,Fence,construction,barrier,"[190, 153, 153]","[190, 153, 153]","[190, 153, 153]","[190, 153, 153]",None
+4,Guard Rail,construction,barrier,"[180, 165, 180]",None,None,"[180, 165, 180]","[250, 100, 255]"
+5,Barrier,construction,barrier,"[90, 120, 150]",None,None,None,None
+6,Wall,construction,barrier,"[102, 102, 156]",None,"[102, 102, 156]","[102, 102, 156]",None
+7,Bike Lane,construction,flat,"[128, 64, 255]",None,None,None,None
+8,Crosswalk - Plain,construction,flat,"[140, 140, 200]",None,None,None,None
+9,Curb Cut,construction,flat,"[170, 170, 170]",None,None,None,None
+10,Parking,construction,flat,"[250, 170, 160]",None,None,"[250, 170, 160]",None
+11,Pedestrian Area,construction,flat,"[96, 96, 96]",None,None,None,None
+12,Rail Track,construction,flat,"[230, 150, 140]","[230, 150, 140]",None,"[230, 150, 140]",None
+13,Road,construction,flat,"[128, 64, 128]","[128, 64, 128]","[128, 64, 128]","[128, 64, 128]","[100, 60, 100]"
+14,Service Lane,construction,flat,"[110, 110, 110]",None,None,None,None
+15,Sidewalk,construction,flat,"[244, 35, 232]","[244, 35, 232]","[244, 35, 232]","[244, 35, 232]",None
+16,Bridge,construction,structure,"[150, 100, 100]",None,None,"[150, 100, 100]",None
+17,Building,construction,structure,"[70, 70, 70]","[70, 70, 70]","[70, 70, 70]","[70, 70, 70]","[140, 140, 140]"
+18,Tunnel,construction,structure,"[150, 120, 90]",None,None,"[150, 120, 90]",None
+19,Person,human,-,"[220, 20, 60]","[220, 20, 60]","[220, 20, 60]","[220, 20, 60]",None
+20,Bicyclist,human,rider,"[255, 0, 0]","[255, 0, 0]","[255, 0, 0]","[255, 0, 0]",None
+21,Motorcyclist,human,rider,"[255, 0, 100]",None,None,None,None
+22,Other Rider,human,rider,"[255, 0, 200]",None,None,None,None
+23,Lane Marking - Crosswalk,marking,-,"[200, 128, 128]",None,None,None,None
+24,Lane Marking - General,marking,-,"[255, 255, 255]",None,"[157, 234, 50]",None,None
+25,Mountain,nature,-,"[64, 170, 64]",None,None,None,None
+26,Sand,nature,-,"[230, 160, 50]",None,None,None,None
+27,Sky,nature,-,"[70, 130, 180]","[70, 130, 180]","[70, 130, 180]","[70, 130, 180]","[90, 200, 255]"
+28,Snow,nature,-,"[190, 255, 255]",None,None,None,None
+29,Terrain,nature,-,"[152, 251, 152]","[152, 251, 152]","[152, 251, 152]","[152, 251, 152]","[210, 0, 200]"
+30,Vegetation,nature,-,"[107, 142, 35]","[35, 142, 35]","[107, 142, 35]","[107, 142, 35]","[90, 240, 0]"
+31,Water,nature,-,"[0, 170, 30]",None,None,None,None
+32,Banner,object,-,"[255, 255, 128]",None,None,None,None
+33,Bench,object,-,"[250, 0, 30]",None,None,None,None
+34,Bike Rack,object,-,"[100, 140, 180]",None,None,None,None
+35,Billboard,object,-,"[220, 220, 220]",None,None,None,None
+36,Catch Basin,object,-,"[220, 128, 128]",None,None,None,None
+37,CCTV Camera,object,-,"[222, 40, 40]",None,None,None,None
+38,Fire Hydrant,object,-,"[100, 170, 30]",None,None,None,None
+39,Junction Box,object,-,"[40, 40, 40]",None,None,None,None
+40,Mailbox,object,-,"[33, 33, 33]",None,None,None,None
+41,Manhole,object,-,"[100, 128, 160]",None,None,None,None
+42,Phone Booth,object,-,"[142, 0, 0]",None,None,None,None
+43,Pothole,object,-,"[70, 100, 150]",None,None,None,None
+44,Street Light,object,-,"[210, 170, 100]",None,None,None,None
+45,Pole,object,support,"[153, 153, 153]","[153, 153, 153]","[153, 153, 153]","[153, 153, 153]","[255, 130, 0]"
+46,Traffic Sign Frame,object,support,"[128, 128, 128]",None,None,None,None
+47,Utility Pole,object,support,"[0, 0, 80]",None,None,None,None
+48,Traffic Light,object,-,"[250, 170, 30]","[250, 170, 30]","[250, 170, 30]","[250, 170, 30]","[200, 200, 0]"
+49,Traffic Sign (Back),object,traffic-sign,"[192, 192, 192]",None,None,None,None
+50,Traffic Sign (Front),object,traffic-sign,"[220, 220, 0]","[220, 220, 0]","[220, 220, 0]","[220, 220, 0]","[255, 255, 0]"
+51,Trash Can,object,-,"[140, 140, 20]","[81, 0, 81]",None,None,None
+52,Bicycle,object,vehicle,"[119, 11, 32]","[119, 11, 32]","[119, 11, 32]","[119, 11, 32]",None
+53,Boat,object,vehicle,"[150, 0, 255]","[50, 0, 90]",None,None,None
+54,Bus,object,vehicle,"[0, 60, 100]","[0, 60, 100]","[0, 60, 100]","[0, 60, 100]",None
+55,Car,object,vehicle,"[0, 0, 142]","[0, 0, 142]","[0, 0, 142]","[0, 0, 142]","[255, 127, 80]"
+56,Caravan,object,vehicle,"[0, 0, 90]","[0, 0, 90]",None,"[0, 0, 90]",None
+57,Motorcycle,object,vehicle,"[0, 0, 230]","[0, 0, 230]","[0, 0, 230]","[0, 0, 230]",None
+58,On Rails,object,vehicle,"[0, 80, 100]","[0, 80, 100]","[0, 80, 100]","[0, 80, 100]",None
+59,Other Vehicle,object,vehicle,"[128, 64, 64]",None,None,None,None
+60,Trailer,object,vehicle,"[0, 0, 110]",None,None,"[0, 0, 110]",None
+61,Truck,object,vehicle,"[0, 0, 70]","[0, 0, 70]","[0, 0, 70]","[0, 0, 70]","[160, 60, 60]"
+62,Wheeled Slow,object,vehicle,"[0, 0, 192]",None,None,None,None
+63,Car Mount,void,-,"[32, 32, 32]",None,None,None,None
+64,Ego Vehicle,void,vehicle,"[120, 10, 10]",None,None,None,None
+65,Unlabeled,void,-,"[0, 0, 0]","[0, 0, 0] ","[0, 0, 0] ","[0, 0, 0] ","[0, 0, 0] "
+66,ground,-,-,None,None,None,"[81, 0, 81]",None
+67,dynamic ,-,-,None,"[111, 74, 0]",None,"[111, 74, 0]",None
+68,plane,object,vehicle,None,"[0, 100, 100]",None,None,None
+69,trash ,object,-,None,"[81, 0, 21]",None,None,None
+70,chair ,object,-,None,"[168, 153, 153]",None,None,None
+71,firehydrant ,object,-,None,"[173, 153, 153]",None,None,None
+72,mobilebarrier ,object,-,None,"[180, 180, 100]",None,None,None
+73,billboard ,object,-,None,"[150, 20, 20]",None,None,None
+74,tree ,object,-,None,"[87, 182, 35]",None,None,"[0, 199, 0]"
+75,Misc,-,-,None,None,None,None,"[80, 80, 80]"
+76,Van,object,vehicle,None,None,None,None,"[0, 139, 139]"
