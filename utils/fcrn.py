@@ -102,35 +102,35 @@ def unpool_as_conv(input_tensor,
                    batch_normalization=True):
     "Figure 3 in paper[1]↑"
     with tf.name_scope(name):
-        result_A = Conv2D(filters=output_filter,
+        result_a = Conv2D(filters=output_filter,
                           kernel_size=(3, 3),
                           strides=1,
                           padding='SAME',
                           name=tf.compat.v1.get_default_graph().unique_name(
-                              'result_A'))(input_tensor)
-        result_B = Conv2D(filters=output_filter,
+                              'result_a'))(input_tensor)
+        result_b = Conv2D(filters=output_filter,
                           kernel_size=(2, 3),
                           strides=1,
                           padding='SAME',
                           name=tf.compat.v1.get_default_graph().unique_name(
-                              'result_B'))(input_tensor)
-        result_C = Conv2D(filters=output_filter,
+                              'result_b'))(input_tensor)
+        result_c = Conv2D(filters=output_filter,
                           kernel_size=(3, 2),
                           strides=1,
                           padding='SAME',
                           name=tf.compat.v1.get_default_graph().unique_name(
-                              'result_C'))(input_tensor)
-        result_D = Conv2D(filters=output_filter,
+                              'result_c'))(input_tensor)
+        result_d = Conv2D(filters=output_filter,
                           kernel_size=(2, 2),
                           strides=1,
                           padding='SAME',
                           name=tf.compat.v1.get_default_graph().unique_name(
-                              'result_D'))(input_tensor)
+                              'result_d'))(input_tensor)
 
         # Interleaving elements of the four feature maps
         # --------------------------------------------------
-        left = interleave([result_A, result_B], axis=1)  # columns
-        right = interleave([result_C, result_D], axis=1)  # columns
+        left = interleave([result_a, result_b], axis=1)  # columns
+        right = interleave([result_c, result_d], axis=1)  # columns
         result = interleave([left, right], axis=2)  # rows
         if batch_normalization:
             result = BatchNormalization()(result)
@@ -439,7 +439,7 @@ def model_m1(rgb_shape=(480, 640, 3),
 
     result = Conv2D(filters=1, kernel_size=1, strides=1)(result)
 
-    outputs = Activation('relu', name='Prediction')(result)
+    outputs = Activation('relu', name='predict')(result)
 
     return tf.keras.models.Model(inputs=[inputs_rgb, inputs_seg],
                                  outputs=outputs,
@@ -1150,9 +1150,7 @@ def model_m6(rgb_shape=(480, 640, 3)):
                         output_filter=32,
                         block_name='up_project_additional')
 
-    result = Conv2D(filters=1,
-                     kernel_size=1,
-                     strides=1)(result)
+    result = Conv2D(filters=1, kernel_size=1, strides=1)(result)
     outputs = Activation(ACTIVATION, name='predict')(result)
 
     return tf.keras.models.Model(inputs=inputs, outputs=outputs, name='FCRN')
@@ -1279,12 +1277,13 @@ def model_m7(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
                         output_filter=32,
                         block_name='up_project_additional')
 
-    result = Conv2D(filters=1,
-                     kernel_size=1,
-                     strides=1)(result)
+    result = Conv2D(filters=1, kernel_size=1, strides=1)(result)
     outputs = Activation(ACTIVATION, name='predict')(result)
 
-    return tf.keras.models.Model(inputs=[inputs_rgb, inputs_seg], outputs=outputs, name='FCRN')
+    return tf.keras.models.Model(inputs=[inputs_rgb, inputs_seg],
+                                 outputs=outputs,
+                                 name='FCRN')
+
 
 
 def model_m8(seg_shape=(480, 640, 19)):
