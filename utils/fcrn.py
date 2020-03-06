@@ -2096,3 +2096,145 @@ def model_m17(rgb_shape=(480, 640, 3)):
     return tf.keras.models.Model(inputs, outputs=outputs, name='FCRN')
 ##=======================================
 
+def model_m18(rgb_shape=(480, 640, 3), seg_shape=(480, 640, 19)):
+    """M18 Network
+    A light weight FCRN that tries to estimate depth map from sem_edges (semantic edges: edge of
+    each class is placed in a specific layer) of image
+
+    whole_edges (sum of vertical and horizontal edges)
+    """
+
+    inputs_rgb = Input(shape=rgb_shape)
+    inputs_seg = Input(shape=seg_shape)
+
+    edges = tf.image.sobel_edges(inputs_rgb)
+    whole_edges = tf.reduce_sum(edges, [-1, -2])
+    whole_edges = tf.expand_dims(whole_edges, -1)
+
+    sem_edges = Multiply()([whole_edges, inputs_seg])
+
+    result = Conv2D(filters=64, kernel_size=7, strides=2,
+                    padding='same')(sem_edges)
+    result = BatchNormalization()(result)
+    result = MaxPool2D(pool_size=3, strides=2, padding='same')(result)
+    result = Activation(ACTIVATION)(result)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=32,
+                        output_filter=128,
+                        strides=1,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=64,
+                        output_filter=256,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=128,
+                        output_filter=512,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=256,
+                        output_filter=1024,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = Conv2D(filters=1024, kernel_size=1, strides=1)(result)
+    result = BatchNormalization()(result)
+
+    result = up_project(input_tensor=result,
+                        output_filter=512,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=256,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=128,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=64,
+                        block_name='up_project_additional')
+    result = up_project(input_tensor=result,
+                        output_filter=32,
+                        block_name='up_project')
+
+    result = Conv2D(filters=1, kernel_size=1, strides=1)(result)
+    outputs = Activation(ACTIVATION, name='predict')(result)
+
+    return tf.keras.models.Model([inputs_rgb, inputs_seg],
+                                 outputs=outputs,
+                                 name='FCRN')
+
+
+def model_m19(rgb_shape=(480, 640, 3)):
+    """M19 Network
+    A light weight FCRN that tries to estimate depth map from whole_edges (sum of vertical and
+    horizontal edges) of image
+    """
+
+    inputs_rgb = Input(shape=rgb_shape)
+
+    edges = tf.image.sobel_edges(inputs_rgb)
+    whole_edges = tf.reduce_sum(edges, [-1, -2])
+    whole_edges = tf.expand_dims(whole_edges, -1)
+
+    result = Conv2D(filters=64, kernel_size=7, strides=2,
+                    padding='same')(whole_edges)
+    result = BatchNormalization()(result)
+    result = MaxPool2D(pool_size=3, strides=2, padding='same')(result)
+    result = Activation(ACTIVATION)(result)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=32,
+                        output_filter=128,
+                        strides=1,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=64,
+                        output_filter=256,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=128,
+                        output_filter=512,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=256,
+                        output_filter=1024,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = Conv2D(filters=1024, kernel_size=1, strides=1)(result)
+    result = BatchNormalization()(result)
+
+    result = up_project(input_tensor=result,
+                        output_filter=512,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=256,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=128,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=64,
+                        block_name='up_project_additional')
+    result = up_project(input_tensor=result,
+                        output_filter=32,
+                        block_name='up_project')
+
+    result = Conv2D(filters=1, kernel_size=1, strides=1)(result)
+    outputs = Activation(ACTIVATION, name='predict')(result)
+
+    return tf.keras.models.Model(inputs_rgb,
+                                 outputs=outputs,
+                                 name='FCRN')
+
