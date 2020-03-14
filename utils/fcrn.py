@@ -2238,3 +2238,67 @@ def model_m19(rgb_shape=(480, 640, 3)):
                                  outputs=outputs,
                                  name='FCRN')
 
+
+def model_m20(rgb_shape=(480, 640, 3)):
+    """M20 Network
+    A light weight FCRN that tries to estimate depth map from image
+    """
+
+    inputs_rgb = Input(shape=rgb_shape)
+
+    result = Conv2D(filters=64, kernel_size=7, strides=2,
+                    padding='same')(inputs_rgb)
+    result = BatchNormalization()(result)
+    result = MaxPool2D(pool_size=3, strides=2, padding='same')(result)
+    result = Activation(ACTIVATION)(result)
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=32,
+                        output_filter=128,
+                        strides=1,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=64,
+                        output_filter=256,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=128,
+                        output_filter=512,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = bottleneck(input_tensor=result,
+                        input_filter=256,
+                        output_filter=1024,
+                        strides=2,
+                        block_name='bottleneck')
+
+    result = Conv2D(filters=1024, kernel_size=1, strides=1)(result)
+    result = BatchNormalization()(result)
+
+    result = up_project(input_tensor=result,
+                        output_filter=512,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=256,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=128,
+                        block_name='up_project')
+    result = up_project(input_tensor=result,
+                        output_filter=64,
+                        block_name='up_project_additional')
+    result = up_project(input_tensor=result,
+                        output_filter=32,
+                        block_name='up_project')
+
+    result = Conv2D(filters=1, kernel_size=1, strides=1)(result)
+    outputs = Activation(ACTIVATION, name='predict')(result)
+
+    return tf.keras.models.Model(inputs_rgb,
+                                 outputs=outputs,
+                                 name='FCRN')
+
