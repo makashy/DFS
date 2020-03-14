@@ -257,7 +257,7 @@ class SamplesDashboard():
         num_slider -= 1
         layer_slider -= 1
         epoch_slider -= 1
-        class_name = self.label_table.loc[self.class_ids[layer_slider - 1]][0]
+        class_name = self.label_table.loc[self.class_ids[layer_slider]][0]
         draw_samples(
             self.feature_list[0],
             self.label_list[0],
@@ -267,7 +267,7 @@ class SamplesDashboard():
             predict_types=self.configurations['dataset']['label_types'],
             sample_num=num_slider,
             class_name=class_name,
-            class_index=layer_slider - 1)
+            class_index=layer_slider)
 
     def load_selected_log(self, folder):
         """Loads selected log files and and displays widgets for selecting
