@@ -19,6 +19,7 @@ COMMON_LABEL_IDS = [
     3, 13, 15, 17, 19, 20, 27, 29, 30, 45, 48, 50, 52, 54, 55, 57, 58, 61, 65
 ]
 
+
 @jit(nopython=True)
 def label_slicer(raw_label, class_color):
     """ Creates a channel for a specific segmentation class from the given raw label """
@@ -40,11 +41,13 @@ def load_label_table(table_address):
                                               sep=',')
     return label_table
 
+
 def available_classes(label_table, dataset_name):
     """Returns indexes of available classes in the dataset
     """
-    return label_table[dataset_name].index[(
-        label_table[dataset_name] != 'None').tolist()]
+    #TODO: Fix "FutureWarning: elementwise comparison failed"
+    return label_table[dataset_name].index[(label_table[dataset_name] !=
+                                            'None').tolist()]
 
 
 def one_hot(label_table,
@@ -226,8 +229,11 @@ class DatasetGenerator(Sequence):
                 if not cat in self.available_categories:
                     raise NameError('InvalidCategory')
             except NameError:
-                print("Oops! This data category (" + cat + ") is not available in "
-                      + "this dataset or this data generator does not support it :(")
+                print(
+                    "Oops! This data category (" + cat +
+                    ") is not available in " +
+                    "this dataset or this data generator does not support it :("
+                )
 
         self.data_buffer = {key: [] for key in self.data_list}
         self.data_history = {key: None for key in self.data_list}
@@ -860,13 +866,78 @@ class VirtualKitti(DatasetGenerator):
 
     def load_and_resize_depth(self, index, resize_setting):
         """loads depth data, converts unit (to meter) and resizes the array"""
-        depth = imread(self.dataset.DEPTH[index], plugin='pil')/100.0
+        depth = imread(self.dataset.DEPTH[index], plugin='pil') / 100.0
         depth = crop_and_resize(depth, resize_setting, self.crop_setting)
         return depth
 
 
-class Kitti:
-    pass
+#TODO: kitti test set!
+class Kitti(DatasetGenerator):
+    """Iterator for looping over elements of KITTI Dataset backwards."""
+    def __init__(self, dataset_dir, **kwargs):
+
+        self.dataset_dir = dataset_dir
+        self.available_categories = ['focal_length', 'image', 'depth']
+        super().__init__(**kwargs)
+
+    def data_frame_creator(self, usage, shuffle):
+        """ pandas dataFrame for addresses of rgb, depth"""
+
+        if usage == 'training':
+            main_folder = '/train'
+
+        elif usage == 'validation':
+            main_folder = '/val'
+
+        else:
+            main_folder = '/test'
+
+        set_dir = self.dataset_dir + main_folder
+
+        rgb_folders = [
+            set_dir + '/' + folder + '/' + camera + '/data'
+            for folder in os.listdir(set_dir)
+            for camera in ['image_02', 'image_03']
+        ]
+
+        depth_folders = [
+            set_dir + '/' + folder + '/proj_depth/groundtruth' + '/' + camera
+            for folder in os.listdir(set_dir)
+            for camera in ['image_02', 'image_03']
+        ]
+
+        rgb_list = [
+            folder + '/' + rgb_name for folder in rgb_folders
+            for rgb_name in os.listdir(folder)[5:-5]
+        ]
+
+        depth_list = [
+            folder + '/' + depth_name for folder in depth_folders
+            for depth_name in os.listdir(folder)
+        ]
+
+        focal_length = [
+            725.0087  # ??
+            for _ in range(len(rgb_list))
+        ]
+
+        dataset = {
+            'RGB': rgb_list,
+            'DEPTH': depth_list,
+            'FOCAL_LENGTH': focal_length
+        }
+
+        if shuffle:
+            return pd.DataFrame(dataset).sample(
+                frac=1, random_state=123).reset_index(drop=True)
+
+        return pd.DataFrame(dataset)
+
+    def load_and_resize_depth(self, index, resize_setting):
+        """loads depth data, converts unit (to meter) and resizes the array"""
+        depth = imread(self.dataset.DEPTH[index], plugin='pil') / 256.0
+        depth = crop_and_resize(depth, resize_setting, self.crop_setting)
+        return depth
 
 
 class Presil:
