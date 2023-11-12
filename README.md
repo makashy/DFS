@@ -24,3 +24,12 @@ jupyter labextension install @jupyter-widgets/jupyterlab-manager \
 conda install -c anaconda pylint \
 conda install -c conda-forge yapf \
 conda install -c conda-forge nb_conda \
+
+Number of samles in each dataset:
+- SYNTHIA-SF: 2224
+- SYNSCAPES: 25,000
+- Lyft Level 5 Datase: 55000
+- PreSIL: 50000
+- Virtual KITTI: 21,260
+- VIPER: 250,000
+- KITTI: 
